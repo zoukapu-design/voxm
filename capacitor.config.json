@@ -1,0 +1,11 @@
+{
+  "appId": "com.zoukapu.voxm",
+  "appName": "VOXM",
+  "webDir": "dist",
+  "backgroundColor": "#05060a",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#05060a",
+    "scrollEnabled": false
+  }
+}

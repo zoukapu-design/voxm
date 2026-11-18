@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Patches the Capacitor-generated iOS project: permissions text, export compliance, orientation, icon, splash.
+set -euo pipefail
+PL=ios/App/App/Info.plist
+PB=/usr/libexec/PlistBuddy
+set_str() { $PB -c "Delete :$1" "$PL" >/dev/null 2>&1 || true; $PB -c "Add :$1 string $2" "$PL"; }
+set_bool() { $PB -c "Delete :$1" "$PL" >/dev/null 2>&1 || true; $PB -c "Add :$1 bool $2" "$PL"; }
+set_str NSMicrophoneUsageDescription "声をリアルタイムに変換・録音するためにマイクを使います。"
+set_str NSCameraUsageDescription "変換ボイス付きの動画撮影と、メモリチップの写真撮影にカメラを使います。"
+set_str NSPhotoLibraryUsageDescription "メモリチップに使う写真を選ぶために写真ライブラリを使います。"
+set_str NSPhotoLibraryAddUsageDescription "撮影した動画を写真に保存するために使います。"
+set_str CFBundleDisplayName "VOXM"
+set_bool ITSAppUsesNonExemptEncryption false
+set_str UIStatusBarStyle "UIStatusBarStyleLightContent"
+for key in UISupportedInterfaceOrientations "UISupportedInterfaceOrientations~ipad"; do
+  $PB -c "Delete :$key" "$PL" >/dev/null 2>&1 || true
+  $PB -c "Add :$key array" "$PL"
+  $PB -c "Add :$key:0 string UIInterfaceOrientationPortrait" "$PL"
+done
+ICONSET=ios/App/App/Assets.xcassets/AppIcon.appiconset
+for f in "$ICONSET"/*.png; do cp assets/icon-1024.png "$f"; done
+SPLASH=ios/App/App/Assets.xcassets/Splash.imageset
+if [ -d "$SPLASH" ]; then for f in "$SPLASH"/*.png; do cp assets/splash-2732.png "$f"; done; fi
+echo "iOS project prepared:"; $PB -c "Print" "$PL" | head -60

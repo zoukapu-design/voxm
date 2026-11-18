@@ -1,0 +1,11 @@
+node_modules/
+dist/
+ios/
+android/
+publish/
+qa/shots/
+qa/*.wav
+*.p8
+*.p12
+*.mobileprovision
+.DS_Store

@@ -1,0 +1,17 @@
+{
+  "name": "voxm",
+  "version": "2.0.0",
+  "private": true,
+  "description": "VOXM — Voice Memory Transformer",
+  "scripts": {
+    "build": "python3 tools/build.py",
+    "test": "node tests/dsp.test.js"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}
