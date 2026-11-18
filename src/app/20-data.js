@@ -135,7 +135,7 @@ function profileLine(p) {
   return parts.slice(0, 2).join('');
 }
 
-/* ===== chip renderer ===== */
+/* ===== chip renderer (data cartridge) ===== */
 function chipPhotoHTML(c) {
   if (c.photo) {
     const src = ASSET[c.photo] || c.photo;
@@ -144,16 +144,25 @@ function chipPhotoHTML(c) {
   if (c.art) return `<div class="art">${artSVG(c.art, c.color)}</div>`;
   return `<div class="mono">${esc((c.name || '?').trim().charAt(0).toUpperCase())}</div>`;
 }
+const CIRCUIT = '<svg class="chip-circuit" viewBox="0 0 100 139" preserveAspectRatio="none" aria-hidden="true"><path d="M4 88V100H14V127"/><path d="M24 116H46V127"/><path d="M95 64V114H72V127"/><path d="M56 121V127"/><path d="M4 30V60"/><path d="M84 6H98"/><circle cx="14" cy="100" r="1"/><circle cx="46" cy="116" r="1"/><circle cx="72" cy="114" r="1"/></svg>';
+const RARITY = { friend: 3, self: 3, character: 2, fx: 1 };
 function chipHTML(c, opts = {}) {
   if (!c) return '';
   const idx = S.chips.indexOf(c) + 1;
   const tag = c.tag || KIND_TAG[c.kind] || 'MEMORY';
-  return `<div class="chip" style="--c:${c.color};--c2:${shade(c.color, -0.55)}">
-    <div class="chip-in">
-      <div class="chip-band"><i class="led"></i><span class="nm">${esc(c.name)}</span><span class="no">Nº${String(idx).padStart(2, '0')}</span></div>
-      <div class="chip-photo">${chipPhotoHTML(c)}<span class="kind">${esc(tag)}</span>${c.demo && !opts.noBadge ? '<span class="badge">SAMPLE</span>' : ''}</div>
-      <div class="chip-foot"><div class="prof">${profileLine(c.profile)}</div><div class="pins"></div></div>
-    </div>
+  const r = c.rarity || RARITY[c.kind] || 1;
+  return `<div class="chip" style="--c:${c.color};--c2:${shade(c.color, -0.6)}">
+    <div class="chip-edge"></div>
+    <div class="chip-shell"><div class="chip-body">
+      ${CIRCUIT}
+      <div class="chip-head"><span class="logo">VXM</span><span class="code">VX-${String(idx).padStart(2, '0')}</span></div>
+      <div class="chip-pips">${[1, 2, 3].map((n) => `<i class="${n <= r ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="chip-grip"></div>
+      <div class="chip-win">${chipPhotoHTML(c)}<i class="hud tl"></i><i class="hud br"></i><span class="kind">${esc(tag)}</span>${c.demo && !opts.noBadge ? '<span class="badge">SAMPLE</span>' : ''}</div>
+      <div class="chip-plate"><b class="nm">${esc(c.name)}</b><div class="prof">${profileLine(c.profile)}</div></div>
+      <div class="chip-bar"></div>
+      <div class="chip-pins"></div>
+    </div></div>
     <div class="chip-sheen"></div>${opts.dim ? '<div class="dim"></div>' : ''}
   </div>`;
 }

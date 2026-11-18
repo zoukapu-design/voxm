@@ -15,39 +15,65 @@ function stageHTML() {
     <div class="slot-clip" id="slotClip"></div>
     <div class="driver" id="driver">
       <div class="drv-floor"></div>
-      <div class="drv-slab"></div>
-      <div class="knob"></div>
-      <div class="drv-top"><div class="drv-slot"></div></div>
-      <div class="drv-body">
-        <div class="deck">
-          <svg class="traces" viewBox="0 0 308 140" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M154 0V5H191V134"/><path d="M158 0V3H248V8"/>
-            <path class="flow" d="M154 0V5H191V134"/><path class="flow" d="M158 0V3H248V8"/>
-          </svg>
-          <div class="drv-screen"><div class="scr">
-            <div class="scr-top"><span>VOXM</span><span class="st" id="scrSt">NO MEMORY</span></div>
-            <canvas id="scrWave"></canvas>
-            <div class="scr-name" id="scrName">メモリを挿入</div>
-            <div class="scr-sub"><span id="scrL"></span><span class="scr-note" id="scrR"></span></div>
-            <div class="scr-vu" id="scrVu">${'<i></i>'.repeat(24)}</div>
-          </div></div>
-          <div class="ring-wrap">
-            <svg class="led-ring" id="ledRing" viewBox="0 0 104 104" aria-hidden="true">${Array.from({ length: 30 }, (_, i) => { const a = (-225 + i * (270 / 29)) * Math.PI / 180; const c = Math.cos(a), s2 = Math.sin(a); return `<line x1="${(52 + c * 44).toFixed(1)}" y1="${(52 + s2 * 44).toFixed(1)}" x2="${(52 + c * 50).toFixed(1)}" y2="${(52 + s2 * 50).toFixed(1)}"/>`; }).join('')}</svg>
-            <button class="ring-btn" id="ringBtn" aria-label="変換のON/OFF"><span class="pw">${ICON.power}</span></button>
-            <div class="ring-lbl" id="ringLbl">CONVERT</div>
-          </div>
-        </div>
-        <div class="drv-keys">
-          <button class="key" id="kMon" aria-label="モニター（自分の耳で聴く）"><i class="lamp"></i>MON</button>
-          <button class="key rec" id="kRec" aria-label="録音"><i class="lamp"></i>REC</button>
-          <button class="key" id="kFx" aria-label="FX工房"><i class="lamp"></i>FX</button>
-        </div>
-        <div class="grille"></div>
-        <div class="vol-led"><i id="volLed"></i></div>
-        <i class="screw" style="left:16px;bottom:28px"></i><i class="screw" style="right:16px;bottom:28px"></i>
-        <span class="drv-serial">VX-06</span><div class="drv-logo">VOXM</div><i class="drv-pwrled"></i>
+      <div class="light-gate"></div>
+      <svg class="drv-svg" viewBox="0 0 344 250" aria-hidden="true">
+        <defs>
+          <linearGradient id="dgBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232638"/><stop offset=".45" stop-color="#11131e"/><stop offset="1" stop-color="#0a0b12"/></linearGradient>
+          <linearGradient id="dgSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2d40"/><stop offset="1" stop-color="#07070c"/></linearGradient>
+          <linearGradient id="dgEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".9"/><stop offset=".35" stop-color="#a487ff" stop-opacity=".7"/><stop offset=".7" stop-color="#7fdcff" stop-opacity=".55"/><stop offset="1" stop-color="#a487ff" stop-opacity=".3"/></linearGradient>
+          <linearGradient id="dgLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7fdcff"/><stop offset=".5" stop-color="#b69cff"/><stop offset="1" stop-color="#ff7ab6"/></linearGradient>
+          <linearGradient id="dgSheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".3" stop-color="#fff" stop-opacity="0"/></linearGradient>
+          <pattern id="dgHex" width="10" height="17.32" patternUnits="userSpaceOnUse" patternTransform="scale(.9)"><path d="M5 0L10 2.9V8.7L5 11.5L0 8.7V2.9Z M5 11.5V17.32" fill="none" stroke="#a487ff" stroke-opacity=".07" stroke-width=".6"/></pattern>
+          <clipPath id="dgClip"><path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z"/></clipPath>
+          <filter id="dgGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" transform="translate(0 12)" fill="url(#dgSide)"/>
+        <path d="M0 160L46 226H298L344 160" transform="translate(0 12)" fill="none" stroke="#a487ff" stroke-opacity=".25"/>
+        <path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" fill="url(#dgBody)"/>
+        <g clip-path="url(#dgClip)">
+          <rect width="344" height="250" fill="url(#dgHex)"/>
+          <rect width="344" height="90" fill="url(#dgSheen)"/>
+          <rect class="scan" x="0" y="0" width="344" height="18" fill="url(#dgLine)" opacity=".5" style="mix-blend-mode:screen;filter:blur(8px)"/>
+          <circle cx="172" cy="110" r="78" fill="none" stroke="#a487ff" stroke-opacity=".08"/>
+          <circle cx="172" cy="110" r="96" fill="none" stroke="#7fdcff" stroke-opacity=".05"/>
+        </g>
+        <path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" fill="none" stroke="url(#dgEdge)" stroke-width="1.2"/>
+        <path class="contour" d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" transform="translate(13.5 9) scale(.92)" fill="none" stroke="url(#dgLine)" stroke-width=".9" stroke-dasharray="60 6 2 6" filter="url(#dgGlow)"/>
+        <path class="wing" d="M8 150L48 208M336 150L296 208" stroke="url(#dgLine)" stroke-width="2.4" stroke-linecap="round" filter="url(#dgGlow)"/>
+        <path class="wing" d="M10 54V128M334 54V128" stroke="#a487ff" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 5"/>
+        <path d="M96 30H122M222 30H248" stroke="#a487ff" stroke-opacity=".4"/>
+      </svg>
+      <div class="drv-slot"></div>
+      <div class="holo-name" id="scrName">メモリを挿入</div>
+      <div class="dhud dhud-l">
+        <span class="k">STATUS</span><span class="v st" id="scrSt">NO MEMORY</span>
+        <span class="k">TYPE</span><span class="v" id="scrL">—</span>
+        <span class="k">INPUT</span><div class="scr-vu" id="scrVu">${'<i></i>'.repeat(12)}</div>
       </div>
-      <div class="knob-hit" id="knobHit" aria-label="音量ノブ（上下にドラッグ）"></div>
+      <div class="dhud dhud-r">
+        <span class="k">VOICE</span><span class="v" id="scrR">—</span>
+        <span class="k">TONE</span><span class="v" id="scrT">—</span>
+        <span class="k">VOLUME</span>
+      </div>
+      <div class="vol-track"><i id="volLed"></i></div>
+      <div class="knob-hit" id="knobHit" aria-label="音量（左右にドラッグ）"></div>
+      <div class="core">
+        <svg class="core-ring" id="ledRing" viewBox="0 0 128 128" aria-hidden="true">
+          <circle cx="64" cy="64" r="63" fill="none" stroke="#a487ff" stroke-opacity=".12"/>
+          <g class="spin"><circle cx="64" cy="64" r="49" fill="none" stroke="#7fdcff" stroke-opacity=".55" stroke-width="1" stroke-dasharray="18 10 3 10"/></g>
+          <g class="spin2"><circle cx="64" cy="64" r="45" fill="none" stroke="#b69cff" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="40 30"/></g>
+          ${Array.from({ length: 40 }, (_, i) => { const a = (-240 + i * (300 / 39)) * Math.PI / 180; const c = Math.cos(a), s2 = Math.sin(a); return `<line class="tick" x1="${(64 + c * 54).toFixed(1)}" y1="${(64 + s2 * 54).toFixed(1)}" x2="${(64 + c * 60).toFixed(1)}" y2="${(64 + s2 * 60).toFixed(1)}"/>`; }).join('')}
+        </svg>
+        <button class="ring-btn" id="ringBtn" aria-label="変換のON/OFF"><canvas id="scrWave"></canvas><span class="pw">${ICON.power}</span></button>
+        <div class="ring-lbl" id="ringLbl">CONVERT</div>
+      </div>
+      <div class="drv-keys">
+        <button class="key" id="kMon" style="left:34px" aria-label="モニター（自分の耳で聴く）">${ICON.headphones}</button>
+        <button class="key rec" id="kRec" style="left:80px;top:10px" aria-label="録音">${ICON.rec}</button>
+        <button class="key" id="kFx" style="left:226px;top:10px" aria-label="FX工房">${ICON.sliders}</button>
+        <button class="key" id="kOut" style="left:272px" aria-label="出力先">${ICON.link}</button>
+      </div>
+      <div class="drv-logo">VOXM CORE</div><i class="drv-pwrled"></i>
     </div>
     <div class="status-strip" id="statusStrip"></div>
   </div></div>`;
@@ -243,16 +269,17 @@ function bindHome() {
   });
   $('#kRec').addEventListener('click', toggleRec);
   $('#kFx').addEventListener('click', () => go('fx'));
+  $('#kOut').addEventListener('click', () => go('output'));
   $('#casePill').addEventListener('click', openCasePicker);
   $('#slotClip').addEventListener('click', (e) => { if (e.target.closest('.slot-chip') && !W.inserting) ejectChip(false); });
 
   // volume knob
   const kh = $('#knobHit');
   let kd = null;
-  kh.addEventListener('pointerdown', (e) => { kd = { y: e.clientY, v: S.volume }; try { kh.setPointerCapture(e.pointerId); } catch (err) {} });
+  kh.addEventListener('pointerdown', (e) => { kd = { x: e.clientX, v: S.volume }; try { kh.setPointerCapture(e.pointerId); } catch (err) {} });
   kh.addEventListener('pointermove', (e) => {
     if (!kd) return;
-    S.volume = clamp(kd.v - (e.clientY - kd.y) / (W.scale * 160), 0, 1.5);
+    S.volume = clamp(kd.v + ((e.clientX - kd.x) / (W.scale * 64)) * 1.5, 0, 1.5);
     VoxEngine.setVolume(S.volume); updateVol(true);
   });
   const kend = () => { if (kd) { kd = null; saveSettings(); } };
@@ -405,7 +432,7 @@ async function saveRecording(res, kind, nameOverride) {
 
 /* ---- driver display ---- */
 function updateVol(flash) {
-  const v = $('#volLed'); if (v) v.style.height = (S.volume / 1.5) * 100 + '%';
+  const v = $('#volLed'); if (v) v.style.width = (S.volume / 1.5) * 100 + '%';
   if (flash) { W.volFlash = performance.now(); }
 }
 function updateDriver() {
@@ -417,6 +444,7 @@ function updateDriver() {
   drv.classList.toggle('rec', rec);
   $('#stage').classList.toggle('has-chip', !!chip);
   $('#scrName').textContent = chip ? chip.name : 'メモリを挿入';
+  $('#kOut') && $('#kOut').classList.toggle('on', !!VoxEngine.status.sinkId);
   $('#ringLbl').textContent = live ? 'LIVE' : st.state === 'starting' ? '...' : 'CONVERT';
   $('#kMon').classList.toggle('on', S.monitor);
   $('#kRec').classList.toggle('on', rec);
@@ -433,13 +461,13 @@ function updateDriver() {
   $('#sqLat').onclick = () => go('output');
 }
 
-/* screen canvas */
+/* voice core canvas: circular oscilloscope */
 let scrCtx = null, scrW = 0, scrH = 0;
 const waveBuf = new Float32Array(2048);
 function sizeCanvas() {
   const c = $('#scrWave'); if (!c) return;
   const dpr = Math.min(3, (window.devicePixelRatio || 1) * (W.scale || 1));
-  scrW = Math.round(176 * dpr); scrH = Math.round(56 * dpr);
+  scrW = scrH = Math.round(80 * dpr);
   c.width = scrW; c.height = scrH; scrCtx = c.getContext('2d');
 }
 let lastScr = 0;
@@ -451,43 +479,42 @@ function screenLoop(t) {
   if (!scrCtx) return;
   const st = VoxEngine.status, live = st.state === 'live', chip = chipById(S.insertedId);
   const g = scrCtx; g.clearRect(0, 0, scrW, scrH);
-  const mid = scrH / 2;
-  // grid
-  g.strokeStyle = 'rgba(164,135,255,.08)'; g.lineWidth = 1;
-  for (let x = 0; x < scrW; x += scrW / 12) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, scrH); g.stroke(); }
-  g.beginPath(); g.moveTo(0, mid); g.lineTo(scrW, mid); g.stroke();
-  const grad = g.createLinearGradient(0, 0, scrW, 0);
-  grad.addColorStop(0, 'rgba(127,220,255,.2)'); grad.addColorStop(0.5, chip ? chip.color : '#a487ff'); grad.addColorStop(1, 'rgba(164,135,255,.2)');
-  g.strokeStyle = grad; g.lineWidth = Math.max(1.5, scrH / 28);
-  g.shadowColor = chip ? chip.color : '#a487ff'; g.shadowBlur = scrH / 6;
-  g.beginPath();
+  const cx = scrW / 2, cy = scrH / 2, R0 = scrW * 0.27;
+  const col = chip ? chip.color : '#a487ff';
   const stage = $('#stage');
+  let vals = null;
   if (live && st.outAnalyser) {
     st.outAnalyser.getFloatTimeDomainData(waveBuf);
     let pk = 0; for (let i = 0; i < 1024; i += 2) pk = Math.max(pk, Math.abs(waveBuf[i]));
     W.lv = (W.lv || 0) * 0.7 + Math.min(1, pk * 1.4) * 0.3;
     stage.style.setProperty('--lv', W.lv.toFixed(3));
     $('#driver').style.setProperty('--under', (0.3 + W.lv * 0.7).toFixed(3));
-    const n = 512;
-    let start = 0;
-    for (let i = 1; i < 1024; i++) if (waveBuf[i - 1] < 0 && waveBuf[i] >= 0) { start = i; break; }
-    for (let i = 0; i < n; i++) {
-      const v = waveBuf[start + i] || 0;
-      const x = (i / (n - 1)) * scrW, y = mid - clamp(v * 2.6, -1, 1) * mid * 0.92;
+    vals = waveBuf;
+  } else if (W.lv) { W.lv = 0; stage.style.setProperty('--lv', '0'); $('#driver').style.setProperty('--under', '.28'); }
+  // inner glow
+  const glow = g.createRadialGradient(cx, cy, 0, cx, cy, scrW * 0.5);
+  glow.addColorStop(0, chip ? col + (live ? '66' : '33') : 'rgba(164,135,255,.12)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = glow; g.fillRect(0, 0, scrW, scrH);
+  const N = 96;
+  const ring = (amp, phase, alpha, width, color) => {
+    g.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const k = i / N, a = k * Math.PI * 2 - Math.PI / 2;
+      let v;
+      if (vals) v = clamp((vals[(i % N) * 8] || 0) * 3.2, -1, 1);
+      else v = Math.sin(k * Math.PI * 6 + phase) * 0.5 + Math.sin(k * Math.PI * 14 - phase * 1.7) * 0.5;
+      const r = R0 + v * amp;
+      const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
       i ? g.lineTo(x, y) : g.moveTo(x, y);
     }
-  } else {
-    if (W.lv) { W.lv = 0; stage.style.setProperty('--lv', '0'); $('#driver').style.setProperty('--under', '.28'); }
-    const amp = chip ? 0.22 : 0.04, ph = t / 600;
-    for (let i = 0; i <= 120; i++) {
-      const x = (i / 120) * scrW, k = i / 120;
-      const env = Math.sin(Math.PI * k);
-      const v = (Math.sin(k * 26 + ph * 3) * 0.6 + Math.sin(k * 61 - ph * 2) * 0.4) * env * amp;
-      const y = mid - v * mid;
-      i ? g.lineTo(x, y) : g.moveTo(x, y);
-    }
-  }
-  g.stroke(); g.shadowBlur = 0;
+    g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = width; g.stroke(); g.globalAlpha = 1;
+  };
+  g.shadowColor = col; g.shadowBlur = scrW / 10;
+  const ph = t / 700;
+  const amp = vals ? scrW * 0.16 : chip ? scrW * 0.035 : scrW * 0.012;
+  ring(amp * 0.6, ph + 1.2, 0.45, scrW / 80, '#7fdcff');
+  ring(amp, ph, 1, scrW / 50, col);
+  g.shadowBlur = 0;
   // LED ring (output level) + VU (input level)
   if (!W.ringLeds) { W.ringLeds = $$('#ledRing line'); W.vu = $$('#scrVu i'); }
   const outN = live ? Math.round(clamp((W.lv || 0) * 1.25, 0, 1) * W.ringLeds.length) : 0;
@@ -497,20 +524,21 @@ function screenLoop(t) {
   W.vu.forEach((v, i) => { const on = i < inN; v.classList.toggle('on', on); v.classList.toggle('hot', on && i >= W.vu.length - 3); });
   // text lines
   const stEl = $('#scrSt');
-  let stTxt = !chip ? 'NO MEMORY' : 'READY', cls = 'st';
-  if (live) { stTxt = 'LIVE'; cls = 'st live'; }
-  if (VoxEngine.recording()) { stTxt = '● REC ' + fmtSec((Date.now() - st.recStart) / 1000); cls = 'st rec'; }
+  let stTxt = !chip ? 'NO MEMORY' : 'READY', cls = 'v st';
+  if (live) { stTxt = 'LIVE'; cls = 'v st live'; }
+  if (VoxEngine.recording()) { stTxt = '● REC ' + fmtSec((Date.now() - st.recStart) / 1000); cls = 'v st rec'; }
   if (st.state === 'error') stTxt = 'MIC ERROR';
   if (stEl.textContent !== stTxt) stEl.textContent = stTxt;
   stEl.className = cls;
-  let L = '', R = '';
-  if (W.volFlash && t - W.volFlash < 1200) { L = 'VOLUME'; R = Math.round((S.volume / 1.5) * 100) + '%'; }
-  else if (live) { L = st.f0 ? 'IN ' + Math.round(st.f0) + 'Hz' : 'IN —'; R = st.f0 ? '♪ ' + noteName(st.f0) : '…'; }
-  else if (chip) { L = KIND_LABEL[chip.kind] || ''; const p = combinedParams(); R = p.robotHz ? 'ROBO' : 'PITCH ' + signed(p.pitch, 1); }
-  else { L = 'SLOT EMPTY'; R = ''; }
-  const l = $('#scrL'), r = $('#scrR');
+  let L = '—', R = '—', T = '—';
+  const pp = chip ? combinedParams() : null;
+  if (chip) { L = KIND_LABEL[chip.kind] || '—'; R = pp.robotHz ? 'ROBO ' + Math.round(pp.robotHz) : signed(pp.pitch, 1) + 'st'; T = signed(pp.formant, 1) + 'st'; }
+  if (live) { R = st.f0 ? Math.round(st.f0) + 'Hz ' + noteName(st.f0) : '—'; }
+  if (W.volFlash && t - W.volFlash < 1200) T = 'VOL ' + Math.round((S.volume / 1.5) * 100) + '%';
+  const l = $('#scrL'), r = $('#scrR'), tt = $('#scrT');
   if (l.textContent !== L) l.textContent = L;
   if (r.textContent !== R) r.textContent = R;
+  if (tt.textContent !== T) tt.textContent = T;
   if (live && t % 1000 < 40) updateDriver();
 }
 
