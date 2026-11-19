@@ -10,8 +10,10 @@ function stageHTML() {
       <button class="case-pill" id="casePill"><i class="sw"></i><span id="caseName"></span><span class="cnt" id="caseCnt"></span>${ICON.down}</button>
       <div class="wheel-index" id="wIdx"></div>
     </div>
+    <div class="ambient" aria-hidden="true">${Array.from({ length: 16 }, (_, i) => `<i style="left:${(i * 53) % 380 + 5}px;top:${(i * 97) % 600 + 20}px;animation-delay:${(i * 0.7) % 9}s;animation-duration:${9 + (i % 5) * 2}s"></i>`).join('')}</div>
+    <div class="wheel-rail" aria-hidden="true"></div>
     <div class="wheel" id="wheel" aria-label="ボイスメモリ。左右にスワイプで選択、下にドラッグかタップでデッキに差し込む"></div>
-    <div class="insert-guide" aria-hidden="true"><i></i><i></i><i></i></div>
+    <svg class="guide" id="guide" viewBox="0 0 390 640" aria-hidden="true"><defs><linearGradient id="gdg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8b4ff" stop-opacity="0"/><stop offset=".35" stop-color="#d6c8ff" stop-opacity=".9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><path id="guidePath" d=""/><path id="guideBeam" d=""/><circle id="guideDot" r="3"/></svg>
     <div class="deck-floor"></div>
     <div class="deck-scene"><div class="deck-obj deck" id="deck"></div></div>
     <button class="hit" id="hitCore" aria-label="変換のON/OFF（コアをタップ）"></button>
@@ -47,6 +49,8 @@ const DK_ICONS = [
 function buildDeck() {
   const o = $('#deck'); o.innerHTML = '';
   const { W: w, H: h, R, ex, ey } = DK;
+  // perspective floor grid under the deck
+  dEl('L floor-grid', `left:-230px;top:-170px;width:${w + 460}px;height:${h + 340}px;transform:translateZ(-1px)`, o);
   // graphite pedestal
   slab(o, { w, h, r: R, z0: 0, depth: 12, n: 12, inset: (t) => 22 - t * 4, bg: (t) => `linear-gradient(90deg,#0d0c13,${mixHex('#2a2836', '#3c3a4c', t)} 30%,${mixHex('#4c4a5e', '#6a6680', t)} 46%,#242230 70%,#0b0a10)` });
   dEl('L', `left:18px;top:18px;width:${w - 36}px;height:${h - 36}px;border-radius:${R - 18}px;transform:translateZ(12.5px);background:radial-gradient(closest-side,#2a2442,#0d0b16);box-shadow:inset 0 0 0 1.5px #d6c8ff,0 0 18px 3px rgba(200,180,255,.6)`, o);
@@ -59,6 +63,8 @@ function buildDeck() {
   const top = dEl('L', `left:0;top:0;width:${w}px;height:${h}px;border-radius:${R}px;transform:translateZ(${DK.plateZ}px);background:radial-gradient(110% 90% at 25% 0%,rgba(255,255,255,.94) 0%,rgba(246,243,252,.82) 40%,rgba(225,220,240,.78) 100%);box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.95),inset 0 0 0 3px rgba(200,180,255,.35),inset 0 -8px 18px rgba(150,130,210,.25)`, o);
   // chip slit
   dEl('face dk-slit', `left:${DK.slitX - 62}px;top:${DK.slitY - 4}px;width:124px;height:8px;border-radius:4px;background:#0b0915;box-shadow:inset 0 2px 3px #000,0 0 0 1px rgba(200,180,255,.7),0 0 12px rgba(200,180,255,.8)`, top);
+  // ripple used when a chip locks / releases
+  dEl('face dk-ripple', `left:${DK.slitX - 40}px;top:${DK.slitY - 40}px;width:80px;height:80px;inset:auto`, top).id = 'dkRipple';
   // light UI printed on the plate
   top.insertAdjacentHTML('beforeend', `<div class="dk-ui">
     <div class="dk-status" id="dkStatus">VOICE CORE · STANDBY</div>
@@ -88,7 +94,8 @@ function buildDeck() {
     <div class="holo-text"><span class="c" id="hoCode">VX-00</span><span class="n" id="hoName"></span><span class="i" id="hoInfo"></span></div>`;
   // chip link light + the chip itself: both parallel to the slit (deck x-axis), standing upright
   const link = dEl('p3 chip-link', `left:${DK.slitX - 56}px;top:${DK.slitY - 40}px;width:112px;height:40px;transform-origin:50% 100%;transform:translateZ(${DK.plateZ + 0.5}px) rotateX(-90deg)`, o);
-  link.innerHTML = `<svg viewBox="0 0 112 40" width="112" height="40"><defs><linearGradient id="dklb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#efe8ff" stop-opacity=".9"/><stop offset="1" stop-color="#c8b4ff" stop-opacity="0"/></linearGradient></defs><rect x="0" y="0" width="112" height="40" fill="url(#dklb)" opacity=".35"/></svg>`;
+  link.innerHTML = `<svg viewBox="0 0 112 40" width="112" height="40"><defs><linearGradient id="dklb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#efe8ff" stop-opacity=".9"/><stop offset="1" stop-color="#c8b4ff" stop-opacity="0"/></linearGradient></defs><rect x="0" y="0" width="112" height="40" fill="url(#dklb)" opacity=".28"/>${[14, 34, 56, 78, 98].map((x) => `<rect x="${x}" y="2" width=".8" height="38" fill="#fff" opacity=".55"/>`).join('')}</svg>`;
+  link.style.webkitMaskImage = link.style.maskImage = 'linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)';
   dEl('p3 chip3d', `left:${DK.slitX - 60}px;top:${DK.slitY - 166}px;width:120px;height:166px;transform-origin:50% 100%;transform:${chipTransform(DK.chipLift)}`, o).id = 'chip3d';
 }
 // The chip stands in the slit plane; z is how high its bottom edge sits above the plate (negative = inside the slit).
@@ -136,6 +143,7 @@ function placeHits() {
   put('hitCore', $('#dkLens'), 16);
   put('hitVol', $('#dkVol'), 14);
   put('hitChip', $('#chip3d .chip'), 0, !!S.insertedId && !W.inserting);
+  measureSlit(); drawGuide();
 }
 
 /* ---- wheel ---- */
@@ -253,7 +261,7 @@ function bindHome() {
       layoutWheel();
     } else {
       W.dragY = dy < 0 ? dy * 0.2 : Math.min(dy, 200);
-      layoutWheel();
+      layoutWheel(); drawGuide();
     }
   });
   const end = (e) => {
@@ -278,8 +286,8 @@ function bindHome() {
       animateTo(Math.round(proj));
     } else {
       $('#deck').classList.remove('armed');
-      if (W.dragY > 78 || (D.vy > 0.55 && W.dragY > 24)) insertCurrent(W.dragY);
-      else springBackCard();
+      if (W.dragY > 70 || (D.vy > 0.55 && W.dragY > 24)) insertCurrent();
+      else { springBackCard(); setTimeout(drawGuide, 260); }
     }
   };
   wheel.addEventListener('pointerup', end);
@@ -313,7 +321,11 @@ function bindHome() {
   requestAnimationFrame(screenLoop);
 }
 
-/* ---- chip insertion: fly from the wheel, then slide straight down into the slit ---- */
+/* ---- chip insertion choreography ----
+ * pick up (anticipation) → fly on an arc with a light trail, tilting into the deck's angle →
+ * phase-shift flash at the hover point (2D card hands over to the 3D chip) → slide straight down
+ * into the slit → lock (click, dip, ripple, slit flash) → hologram boots.
+ */
 function setChip3d(chip) {
   const c3 = $('#chip3d');
   c3.innerHTML = chip ? chipHTML(chip) : '';
@@ -332,26 +344,67 @@ function syncSlotChip() {
   }
   requestAnimationFrame(placeHits);
 }
-function flyClone(chip, fromRect) {
+const ctr = (r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height });
+function flyClone(chip, r, cls = '') {
   const el = document.createElement('div');
-  el.className = 'fly-chip';
-  el.style.fontSize = (fromRect.width / 10) + 'px';
+  el.className = 'fly-chip ' + cls;
+  el.style.width = r.width + 'px'; el.style.height = r.height + 'px';
+  el.style.fontSize = (r.width / 10) + 'px';
   el.innerHTML = chipHTML(chip);
-  el.style.transform = `translate(${fromRect.left}px,${fromRect.top}px)`;
+  el.style.transform = `translate(${r.left}px,${r.top}px)`;
   document.body.append(el);
   return el;
 }
-function contactFx() {
-  const d = $('#deck');
-  VoxEngine.sfx('insert');
-  d.classList.remove('thunk'); void d.offsetWidth; d.classList.add('thunk');
-  try { navigator.vibrate && navigator.vibrate(18); } catch (e) {}
+// a keyframe that places the clone's centre at (x,y) with size scale k and a 3D attitude
+const kf = (from, x, y, k, rx = 0, ry = 0, rz = 0, extra = {}) => Object.assign({ transform: `translate(${(x - from.w / 2).toFixed(1)}px,${(y - from.h / 2).toFixed(1)}px) perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${k.toFixed(3)})` }, extra);
+function burst(x, y, size, color = '#d6c8ff') {
+  const b = document.createElement('div');
+  b.className = 'burst';
+  b.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;--bc:${color}`;
+  document.body.append(b);
+  const a = b.animate([{ transform: 'scale(.25)', opacity: 1 }, { transform: 'scale(1.5)', opacity: 0 }], { duration: S.reduceMotion ? 1 : 420, easing: 'cubic-bezier(.2,.8,.3,1)' });
+  a.onfinish = () => b.remove();
+}
+function ripple() {
+  const r = $('#dkRipple'); if (!r || S.reduceMotion) return;
+  r.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(3.2)', opacity: 0 }], { duration: 650, easing: 'cubic-bezier(.2,.8,.3,1)' });
+}
+// fly a card along an arc between two screen rects, with a fading light trail
+async function flyPath(chip, from, to, { dur = 520, outbound = true } = {}) {
+  const A = ctr(from), B = ctr(to);
+  const k = B.w / A.w;
+  // attitude of the seated chip (leans back and turns with the deck) vs. the flat wheel card
+  const tiltTo = outbound ? [22, -16, -2] : [0, 0, 0], tiltFrom = outbound ? [0, 0, 0] : [22, -16, -2];
+  const midX = A.x + (B.x - A.x) * 0.45 + (outbound ? -26 : 26), midY = Math.min(A.y, B.y) + (B.y - A.y) * 0.3 - 30;
+  const frames = [
+    kf(A, A.x, A.y, outbound ? 1.06 : 1, ...tiltFrom, { offset: 0 }),
+    kf(A, midX, midY, outbound ? 1.1 : (1 + k) / 2, (tiltFrom[0] + tiltTo[0]) / 2, (tiltFrom[1] + tiltTo[1]) / 2, outbound ? -6 : 6, { offset: 0.45 }),
+    kf(A, B.x, B.y, k, ...tiltTo, { offset: 1 }),
+  ];
+  const easing = outbound ? 'cubic-bezier(.45,.05,.25,1)' : 'cubic-bezier(.3,.6,.2,1)';
+  const ghosts = S.reduceMotion ? [] : [0.42, 0.24, 0.12].map((op, i) => {
+    const g = flyClone(chip, from, 'ghost');
+    g.style.opacity = op;
+    g.animate(frames, { duration: dur, delay: (i + 1) * 34, easing, fill: 'both' }).onfinish = () => g.remove();
+    return g;
+  });
+  const main = flyClone(chip, from, 'lead');
+  const a = main.animate(frames, { duration: S.reduceMotion ? 1 : dur, easing, fill: 'forwards' });
+  try { await a.finished; } catch (e) {}
+  return { main, ghosts };
 }
 async function animateLift(c3, from, to, dur, easing) {
   const a = c3.animate([{ transform: chipTransform(from) }, { transform: chipTransform(to) }], { duration: S.reduceMotion ? 1 : dur, easing, fill: 'forwards' });
   try { await a.finished; } catch (e) {}
   c3.style.transform = chipTransform(to);
   try { a.cancel(); } catch (e) {}
+}
+function contactFx() {
+  const d = $('#deck');
+  VoxEngine.sfx('insert');
+  d.classList.remove('thunk'); void d.offsetWidth; d.classList.add('thunk');
+  ripple();
+  try { navigator.vibrate && navigator.vibrate(18); } catch (e) {}
 }
 async function insertCurrent() {
   const ci = centerIndex();
@@ -365,37 +418,36 @@ async function insertCurrent() {
   card.classList.remove('dragging');
   W.dragCard = null; W.dragY = 0;
   S.insertedId = chip.id;
-  layoutWheel(); // the wheel slot becomes a ghost
+  layoutWheel();
+  drawGuide();
   const c3 = $('#chip3d');
   setChip3d(chip);
   c3.classList.remove('on');
   c3.style.transform = chipTransform(DK.chipLift);
   const to = c3.querySelector('.chip').getBoundingClientRect();
   deck.classList.add('armed');
-  // 1) fly to the hover point above the slit (screen space)
-  const fly = flyClone(chip, from);
-  const k = to.width / from.width;
-  const dx = to.left - from.left, dy = to.top - from.top;
-  const fa = fly.animate([
-    { transform: `translate(${from.left}px,${from.top}px) scale(1)` },
-    { transform: `translate(${from.left + dx * 0.55}px,${from.top + dy * 0.35 - 18}px) scale(${(1 + k) / 2}) rotate(-3deg)`, offset: 0.5 },
-    { transform: `translate(${to.left}px,${to.top}px) scale(${k})` },
-  ], { duration: S.reduceMotion ? 1 : 420, easing: 'cubic-bezier(.4,.1,.3,1)', fill: 'forwards' });
-  fly.style.transformOrigin = '0 0';
-  try { await fa.finished; } catch (e) {}
-  c3.classList.add('on');
-  fly.remove();
-  // 2) slide straight down along the slit axis, seat with a small bounce
-  await animateLift(c3, DK.chipLift, -4, 300, 'cubic-bezier(.55,0,.9,.6)');
+  VoxEngine.sfx('tick');
+  // 1) flight
+  const { main } = await flyPath(chip, from, to, { dur: 520, outbound: true });
+  // 2) phase-shift: flash, cross-fade 2D → 3D
+  const B = ctr(to);
+  burst(B.x, B.y, to.width * 1.6);
+  c3.classList.add('on', 'materialize');
+  main.animate([{ opacity: 1, filter: 'brightness(1.8)' }, { opacity: 0, filter: 'brightness(3)' }], { duration: S.reduceMotion ? 1 : 160, fill: 'forwards' }).onfinish = () => main.remove();
+  await sleep(S.reduceMotion ? 0 : 90);
+  // 3) slide down the slit axis, 4) lock
+  deck.classList.add('inserting');
+  await animateLift(c3, DK.chipLift, -5, 260, 'cubic-bezier(.6,0,.9,.5)');
   contactFx();
-  deck.classList.remove('armed');
-  deck.classList.add('loaded');
-  await animateLift(c3, -4, 0, 160, 'cubic-bezier(.2,.9,.3,1)');
+  deck.classList.remove('armed', 'inserting');
+  c3.classList.remove('materialize');
+  await animateLift(c3, -5, 0, 180, 'cubic-bezier(.2,.9,.3,1.4)');
+  // 5) hologram boots
+  W.bootT = performance.now();
+  deck.classList.add('loaded', 'booting');
+  setTimeout(() => deck.classList.remove('booting'), 900);
   W.inserting = false;
-  saveSettings();
-  applyParams();
-  updateDriver();
-  placeHits();
+  saveSettings(); applyParams(); updateDriver(); placeHits();
   if (VoxEngine.status.state === 'live') toast(`「${chip.name}」の声に切り替えました`);
 }
 async function ejectChip(quick) {
@@ -405,19 +457,24 @@ async function ejectChip(quick) {
   const deck = $('#deck');
   W.inserting = true;
   $('#hitChip').style.display = 'none';
-  VoxEngine.sfx('eject');
-  // 1) slide up out of the slit
-  await animateLift(c3, 0, quick ? 70 : DK.chipLift, quick ? 200 : 320, 'cubic-bezier(.2,.8,.3,1)');
+  // 1) hologram collapses into the lens
+  deck.classList.add('collapsing');
   deck.classList.remove('loaded');
+  await sleep(S.reduceMotion ? 0 : 160);
+  // 2) release: the slot pushes the chip up
+  VoxEngine.sfx('eject');
+  ripple();
+  deck.classList.add('releasing');
+  await animateLift(c3, 0, quick ? 60 : DK.chipLift, quick ? 220 : 340, 'cubic-bezier(.15,.9,.3,1.25)');
+  deck.classList.remove('releasing', 'collapsing');
   if (quick) {
-    const a = c3.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
-    try { await a.finished; } catch (e) {}
-    try { a.cancel(); } catch (e) {}
+    const r = c3.querySelector('.chip').getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2, r.width * 1.4);
     c3.classList.remove('on'); setChip3d(null);
-    S.insertedId = null; W.inserting = false; layoutWheel(); updateDriver();
+    S.insertedId = null; W.inserting = false; layoutWheel(); updateDriver(); drawGuide();
     return;
   }
-  // 2) fly back to its place in the wheel
+  // 3) phase back to 2D and fly home to the wheel
   const chip = chipById(id);
   const i = W.list.findIndex((c) => c.id === id);
   if (i >= 0 && i !== centerIndex()) {
@@ -426,23 +483,41 @@ async function ejectChip(quick) {
   }
   const from = c3.querySelector('.chip').getBoundingClientRect();
   const target = i >= 0 ? W.cards[i].querySelector('.chip').getBoundingClientRect() : null;
+  burst(from.left + from.width / 2, from.top + from.height / 2, from.width * 1.5);
   c3.classList.remove('on');
   if (chip && target) {
-    const fly = flyClone(chip, from);
-    fly.style.transformOrigin = '0 0';
-    const k = target.width / from.width;
-    const fa = fly.animate([
-      { transform: `translate(${from.left}px,${from.top}px) scale(1)` },
-      { transform: `translate(${target.left}px,${target.top}px) scale(${k})` },
-    ], { duration: S.reduceMotion ? 1 : 380, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' });
-    try { await fa.finished; } catch (e) {}
-    fly.remove();
+    const { main } = await flyPath(chip, from, target, { dur: 440, outbound: false });
+    S.insertedId = null; layoutWheel();
+    main.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' }).onfinish = () => main.remove();
   }
   setChip3d(null);
   S.insertedId = null;
   W.inserting = false;
   saveSettings(); applyParams();
-  layoutWheel(); updateDriver();
+  layoutWheel(); updateDriver(); drawGuide();
+}
+
+/* ---- guide light from the wheel to the slit ---- */
+let slitPt = null;
+function measureSlit() {
+  const stage = $('#stage'), slit = $('#deck .dk-slit');
+  if (!stage || !slit || !W.scale) return;
+  const sr = stage.getBoundingClientRect(), r = slit.getBoundingClientRect();
+  slitPt = { x: (r.left + r.width / 2 - sr.left) / W.scale, y: (r.top + r.height / 2 - sr.top) / W.scale };
+}
+function drawGuide() {
+  const g = $('#guide'); if (!g || !slitPt) return;
+  const show = !S.insertedId && W.list.length;
+  g.classList.toggle('show', !!show);
+  const sx = 195, sy = 222, ex = slitPt.x, ey = slitPt.y - 6;
+  const d = `M${sx} ${sy} C ${sx} ${sy + 70}, ${ex} ${ey - 90}, ${ex} ${ey}`;
+  $('#guidePath').setAttribute('d', d);
+  // while dragging, a bright beam reaches from the card to the slit
+  const k = clamp((W.dragY || 0) / 90, 0, 1);
+  g.style.setProperty('--k', k.toFixed(3));
+  const by = sy + (W.dragY || 0);
+  $('#guideBeam').setAttribute('d', `M${sx} ${by} C ${sx} ${by + 40}, ${ex} ${ey - 50}, ${ex} ${ey}`);
+  $('#guideDot').setAttribute('cx', ex); $('#guideDot').setAttribute('cy', ey);
 }
 
 /* ---- conversion / recording ---- */
@@ -577,7 +652,7 @@ function screenLoop(t) {
       g.globalAlpha = alpha; g.lineWidth = width; g.lineCap = 'round';
       for (let i = 0; i < HOLO_N; i++) {
         const a = (i / HOLO_N) * Math.PI * 2 - Math.PI / 2;
-        const v = clamp(holoVals[i], 0.06, 1);
+        const ang = (i / HOLO_N + 0.75) % 1; const v = clamp(holoVals[i], 0.06, 1) * (boot >= 1 ? 1 : clamp((boot - ang * 0.6) * 3, 0, 1));
         g.strokeStyle = typeof col === 'function' ? col(a) : col;
         g.beginPath();
         g.moveTo(c + ox + Math.cos(a) * r1, c + Math.sin(a) * r1);
@@ -586,6 +661,7 @@ function screenLoop(t) {
       }
       g.globalAlpha = 1;
     };
+    const boot = W.bootT ? clamp((performance.now() - W.bootT) / 700, 0, 1) : 1;
     const base = chip.color || '#c8b4ff';
     draw('#7fe8ff', S2 * 0.012, 0.3, S2 / 140);
     g.shadowColor = base; g.shadowBlur = S2 / 40;

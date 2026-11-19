@@ -409,3 +409,43 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
 @media (prefers-reduced-motion: reduce) { .wcard.center .chip { animation: none; } }
+
+/* ---------- home: ambience, guide light, choreography ---------- */
+.ambient { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.ambient i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #e6dcff; box-shadow: 0 0 6px #b9a5ff; opacity: 0; animation: drift 11s linear infinite; }
+@keyframes drift { 0% { transform: translateY(20px); opacity: 0; } 20% { opacity: .55; } 80% { opacity: .35; } 100% { transform: translateY(-60px); opacity: 0; } }
+.wheel-rail { position: absolute; left: 40px; right: 40px; top: 214px; height: 22px; border-radius: 50%; pointer-events: none; z-index: 9;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(200,180,255,.35), transparent 70%); box-shadow: 0 1px 0 rgba(214,200,255,.25); filter: blur(.3px); }
+.wheel-rail::after { content: ''; position: absolute; left: 10%; right: 10%; top: 50%; height: 1px; background: linear-gradient(90deg, transparent, rgba(230,220,255,.7), transparent); }
+.guide { position: absolute; left: 0; top: 0; width: 390px; height: 640px; pointer-events: none; z-index: 12; opacity: 0; transition: opacity .4s; overflow: visible; }
+.guide.show { opacity: 1; }
+.guide #guidePath { fill: none; stroke: rgba(214,200,255,.5); stroke-width: 1.2; stroke-dasharray: 2 7; stroke-linecap: round; animation: guideFlow 1.1s linear infinite; }
+.guide #guideBeam { fill: none; stroke: url(#gdg); stroke-width: 2.4; stroke-linecap: round; opacity: var(--k, 0); filter: drop-shadow(0 0 6px #b9a5ff); }
+.guide #guideDot { fill: #fff; opacity: calc(.4 + var(--k, 0) * .6); filter: drop-shadow(0 0 6px #c8b4ff); animation: armed 1.2s ease-in-out infinite; }
+@keyframes guideFlow { to { stroke-dashoffset: -18; } }
+.floor-grid { pointer-events: none; opacity: .9;
+  background-image: linear-gradient(rgba(190,170,255,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(190,170,255,.16) 1px, transparent 1px); background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 25%, transparent 100%); mask-image: radial-gradient(closest-side, #000 25%, transparent 100%); }
+.dk-ripple { border-radius: 50%; border: 1.5px solid rgba(214,200,255,.95); box-shadow: 0 0 14px rgba(200,180,255,.9), inset 0 0 10px rgba(200,180,255,.6); opacity: 0; pointer-events: none; }
+.burst { position: fixed; z-index: 75; pointer-events: none; border-radius: 50%; background: radial-gradient(closest-side, #fff, var(--bc) 35%, rgba(164,135,255,.25) 60%, transparent 72%); mix-blend-mode: screen; }
+.fly-chip { transform-origin: 50% 50%; }
+.fly-chip.lead { filter: drop-shadow(0 18px 24px rgba(0,0,0,.55)) drop-shadow(0 0 18px rgba(185,160,255,.55)); }
+.fly-chip.ghost { filter: blur(1.5px) saturate(1.4) hue-rotate(10deg); mix-blend-mode: screen; z-index: 69; }
+.chip3d.materialize { animation: materialize .28s ease-out; }
+@keyframes materialize { 0% { opacity: 0; filter: brightness(3) saturate(0); } 100% { opacity: 1; filter: none; } }
+.deck.inserting .chip-link, .deck.releasing .chip-link { opacity: 1; }
+.deck.inserting .dk-slit, .deck.releasing .dk-slit { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #fff, 0 0 22px 5px rgba(214,200,255,1) !important; }
+.deck.collapsing .holo-rise { transform: scaleY(.04) !important; transition-duration: .18s !important; }
+.deck.collapsing .holo { opacity: 0 !important; transition-duration: .25s; }
+.deck.booting .holo-rise { transition-duration: .55s; }
+.deck.booting .holo-scan { animation: bootScan .7s ease-out; }
+@keyframes bootScan { 0% { background: linear-gradient(0deg, transparent 0%, rgba(255,255,255,.7) 2%, transparent 4%) 0 100% / 100% 100%; } 100% { background: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3px); } }
+.deck.booting .dk-lens { filter: brightness(1.8) !important; }
+/* controls as one floating glass dock */
+.ctrl { left: 14px; right: 14px; top: 592px; height: 46px; padding: 3px; gap: 3px; border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); border: 1px solid rgba(214,200,255,.16);
+  box-shadow: 0 10px 30px -14px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.08); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.ctrl .cbtn { height: 38px; border-radius: 14px; border: 0; background: transparent; }
+.ctrl .cbtn.on { background: rgba(164,135,255,.2); box-shadow: inset 0 0 0 1px rgba(200,180,255,.45); }
+.ctrl .cbtn.rec.on { background: rgba(255,77,140,.18); box-shadow: inset 0 0 0 1px rgba(255,111,174,.55); }
+.ctrl .cbtn.main { background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(226,220,240,.96)); }
+.ctrl .cbtn.main.on { background: linear-gradient(180deg, #b9a5ff, #7b5cff); }
