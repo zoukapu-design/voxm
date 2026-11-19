@@ -13,14 +13,14 @@ async def layout_check(p, tag):
     r = await p.evaluate('''() => {
       const R = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom)]; };
       const main = R(document.querySelector('main')), nav = R(document.querySelector('.tabs')), hdr = R(document.querySelector('.top'));
-      const items = {}; for (const s of ['.case-bar', '.wheel .wcard.center', '#driver .drv-svg', '.status-strip', '.ring-btn', '.core', '.knob-hit']) items[s] = R(document.querySelector(s));
+      const items = {}; for (const s of ['.case-bar', '.wheel .wcard.center', '#deck', '.ctrl', '#kConv', '#hitCore', '#hitVol']) items[s] = R(document.querySelector(s));
       return { main, nav, hdr, items, docW: document.documentElement.scrollWidth, winW: innerWidth, scale: getComputedStyle(document.querySelector('#stage')).getPropertyValue('--s') };
     }''')
     probs = []
     for k, b in r['items'].items():
         if not b: probs.append(f'missing {k}'); continue
         if b[1] < r['main'][1] - 1 or b[3] > r['main'][3] + 1: probs.append(f'{k} outside main vertically {b} vs {r["main"]}')
-        if b[0] < -1 and k != '.knob-hit' or b[2] > r['winW'] + 1 and k != '.knob-hit': probs.append(f'{k} outside horizontally {b}')
+        if b[0] < -1 and k != '#deck' or b[2] > r['winW'] + 1 and k != '#deck': probs.append(f'{k} outside horizontally {b}')
     if r['docW'] > r['winW']: probs.append(f'horizontal overflow {r["docW"]}>{r["winW"]}')
     print(tag, 'scale', r['scale'], 'OK' if not probs else probs)
     return probs
@@ -57,7 +57,7 @@ async def main():
             ins = await p.evaluate('VOXM_DEBUG.S.insertedId'); print('inserted:', ins)
             await p.screenshot(path=f'{OUT}/flow4_inserted.png')
             # power on (fake mic)
-            await p.click('#ringBtn'); await p.wait_for_timeout(2500)
+            await p.click('#kConv'); await p.wait_for_timeout(2500)
             st = await p.evaluate('({s:VOXM_DEBUG.VoxEngine.status.state, k:VOXM_DEBUG.VoxEngine.status.coreKind, f0:VOXM_DEBUG.VoxEngine.status.f0, lat:VOXM_DEBUG.VoxEngine.latencyMs(), err:VOXM_DEBUG.VoxEngine.status.error})')
             print('engine:', st)
             await p.screenshot(path=f'{OUT}/flow5_live.png')

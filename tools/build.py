@@ -21,7 +21,7 @@ def page(pwa):
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="VOXM">
 <title>VOXM — Voice Memory Transformer</title>{head_pwa}<link rel="icon" href="{ICON}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Sora:wght@200;300;400&display=swap" rel="stylesheet">
 <style>{rd('styles.css')}</style></head>
 <body><div id="app"></div>
 <script type="text/plain" id="voxm-dsp-src">{dsp}</script>

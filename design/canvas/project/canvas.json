@@ -1,0 +1,112 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-18T16:45:00Z"
+ },
+ "title": "VOXM ガジェット候補",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 470,
+   "title": "A — HALO"
+  },
+  "Monolith.dc.html": {
+   "x": 470,
+   "y": 0,
+   "w": 390,
+   "h": 470,
+   "title": "B — MONOLITH"
+  },
+  "HoloDeck.dc.html": {
+   "x": 940,
+   "y": 0,
+   "w": 390,
+   "h": 470,
+   "title": "C — HOLO DECK"
+  },
+  "Reactor.dc.html": {
+   "x": 1410,
+   "y": 0,
+   "w": 390,
+   "h": 470,
+   "title": "D — REACTOR"
+  },
+  "HoloDeckObsidian.dc.html": {
+   "x": 0,
+   "y": 850,
+   "w": 390,
+   "h": 520,
+   "title": "C+ — HOLO DECK / OBSIDIAN"
+  },
+  "HoloDeckPearl.dc.html": {
+   "x": 470,
+   "y": 850,
+   "w": 390,
+   "h": 520,
+   "title": "C+ — HOLO DECK / PEARL"
+  },
+  "HoloDeckPearlGadget.dc.html": {
+   "x": 940,
+   "y": 850,
+   "w": 390,
+   "h": 520,
+   "title": "C++ — PEARL GADGET"
+  },
+  "HoloDeckPearlPro.dc.html": {
+   "x": 1410,
+   "y": 850,
+   "w": 390,
+   "h": 520,
+   "title": "C+++ — PEARL PRO"
+  },
+  "HoloDeckNext.dc.html": {
+   "x": 0,
+   "y": 1700,
+   "w": 390,
+   "h": 540,
+   "title": "NEXT — 浮遊ホロデッキ"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Monolith.dc.html",
+  "HoloDeck.dc.html",
+  "Reactor.dc.html",
+  "HoloDeckObsidian.dc.html",
+  "HoloDeckPearl.dc.html",
+  "HoloDeckPearlGadget.dc.html",
+  "HoloDeckPearlPro.dc.html",
+  "HoloDeckNext.dc.html"
+ ],
+ "notes": {
+  "head": {
+   "x": 0,
+   "y": -260,
+   "text": "VOXM ガジェット候補 — どれが好き？",
+   "kind": "title1",
+   "maxW": 1800
+  },
+  "row2": {
+   "x": 0,
+   "y": 590,
+   "text": "C をブラッシュアップ",
+   "kind": "title1",
+   "maxW": 1800
+  },
+  "row3": {
+   "x": 0,
+   "y": 1440,
+   "text": "近未来版",
+   "kind": "title1",
+   "maxW": 860
+  }
+ },
+ "designSystems": []
+}

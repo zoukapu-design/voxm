@@ -1,0 +1,138 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
+<title>VOXM HOLO DECK NEXT</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Sora:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+:root{--tech:'Michroma','Arial',sans-serif;--mono:ui-monospace,Menlo,monospace;--sora:'Sora','Hiragino Sans',sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#04050a;color:#eceef6;font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif}
+#boards{display:flex;flex-wrap:wrap;gap:24px;padding:24px}
+.gboard{position:relative;width:390px;height:540px;overflow:hidden;border-radius:28px}
+.tag{position:absolute;left:22px;top:20px;z-index:50}.tag b{display:block;font-family:var(--tech);font-size:12px;letter-spacing:.3em}.tag span{display:block;margin-top:6px;font-size:11px;opacity:.6}
+.scene,.obj,.p3{position:absolute;transform-style:preserve-3d}
+.L,.face{position:absolute}
+.face{inset:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinR{to{transform:rotate(-360deg)}}
+@keyframes orbit{to{transform:translateZ(var(--z)) rotateZ(360deg)}}
+@keyframes rise{0%{transform:translateY(0);opacity:0}25%{opacity:1}100%{transform:translateY(-110px);opacity:0}}
+@keyframes flick{0%,100%{opacity:.95}47%{opacity:.9}50%{opacity:.7}53%{opacity:.93}}
+@keyframes hoverChip{50%{transform:translateZ(var(--cz2)) rotateZ(16deg) rotateX(-90deg) scale(.8)}}
+@keyframes pulse{50%{opacity:.5}}
+/* ---------- memory chip (data cartridge) — sized in em ---------- */
+.chip { --notch: polygon(0.5em 0, calc(100% - 1.9em) 0, 100% 1.9em, 100% calc(100% - 2em), calc(100% - 0.55em) calc(100% - 1.45em), calc(100% - 1.05em) calc(100% - 1.45em), calc(100% - 1.05em) 100%, 1.05em 100%, 1.05em calc(100% - 1.45em), 0.55em calc(100% - 1.45em), 0 calc(100% - 2em), 0 0.5em);
+  --chamfer: var(--notch);
+  position: relative; width: 10em; height: 13.86em; }
+.chip-edge { position: absolute; inset: 0; clip-path: var(--notch); transform: translate(0.16em, 0.24em); background: linear-gradient(180deg, color-mix(in srgb, var(--c) 45%, #000), #05060a); opacity: .95; }
+.chip-shell { position: absolute; inset: 0; clip-path: var(--notch); padding: 0.09em;
+  background: linear-gradient(160deg, #ffffff 0%, var(--c) 18%, rgba(255,255,255,.25) 40%, var(--c2) 62%, var(--c) 85%, #fff 100%); }
+.chip-body { position: relative; height: 100%; clip-path: var(--notch); overflow: hidden;
+  background:
+    radial-gradient(90% 55% at 50% 30%, color-mix(in srgb, var(--c) 32%, transparent), transparent 70%),
+    linear-gradient(165deg, color-mix(in srgb, var(--c) 30%, #0b0c16) 0%, #090a13 38%, #070810 70%, color-mix(in srgb, var(--c) 22%, #070810) 100%); }
+.chip-circuit { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; pointer-events: none; }
+.chip-circuit path { fill: none; stroke: var(--c); stroke-width: .35; stroke-linecap: round; }
+.chip-circuit circle { fill: var(--c); }
+.chip-head { position: absolute; left: 0.75em; right: 2.1em; top: 0.5em; height: 1.1em; display: flex; align-items: center; gap: 0.4em; }
+.chip-head .logo { font-family: var(--tech); font-size: 0.5em; letter-spacing: .12em; color: #fff; padding: 0.15em 0.4em; border: 1px solid rgba(255,255,255,.4); border-radius: 0.2em; }
+.chip-head .code { font-family: var(--mono); font-size: 0.48em; color: color-mix(in srgb, var(--c) 70%, #fff); letter-spacing: .06em; }
+.chip-pips { position: absolute; right: 0.55em; top: 2.25em; display: flex; flex-direction: column; gap: 0.18em; }
+.chip-pips i { width: 0.32em; height: 0.32em; transform: rotate(45deg); background: rgba(255,255,255,.18); }
+.chip-pips i.on { background: var(--c); box-shadow: 0 0 0.35em var(--c); }
+.chip-win { position: absolute; left: 0.62em; right: 1.15em; top: 1.95em; height: 6.55em; border-radius: 0.35em; overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, var(--c2), #05060a 80%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent), 0 0 0.8em -0.2em var(--c); }
+.chip-win img, .chip-win .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
+.chip-win .art svg { width: 100%; height: 100%; }
+.chip-win .mono { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--tech); font-size: 3em; color: #fff; text-shadow: 0 0 0.3em var(--c); }
+.chip-win::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), linear-gradient(180deg, transparent 60%, rgba(5,6,10,.75)); }
+.chip-win .hud { position: absolute; width: 0.7em; height: 0.7em; border: 0 solid #fff; opacity: .85; z-index: 2; }
+.chip-win .hud.tl { left: 0.25em; top: 0.25em; border-left-width: 1.5px; border-top-width: 1.5px; }
+.chip-win .hud.br { right: 0.25em; bottom: 0.25em; border-right-width: 1.5px; border-bottom-width: 1.5px; }
+.chip-win .kind { position: absolute; left: 0.45em; bottom: 0.35em; z-index: 2; font-family: var(--tech); font-size: 0.4em; letter-spacing: .2em; color: #e8e6ff; }
+.chip-win .badge { position: absolute; right: 0.35em; top: 0.35em; z-index: 2; font-size: 0.42em; font-weight: 800; padding: 0.2em 0.5em; border-radius: 1em; background: rgba(5,6,10,.75); border: 1px solid rgba(255,255,255,.25); }
+.chip-plate { position: absolute; left: 0.62em; right: 0.62em; top: 8.75em; }
+.chip-plate .nm { display: block; font-size: 0.92em; font-weight: 900; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; text-shadow: 0 0 0.5em color-mix(in srgb, var(--c) 60%, transparent); }
+.chip-plate .prof { display: flex; gap: 0.5em; margin-top: 0.25em; font-family: var(--mono); font-size: 0.46em; color: #aeb3c6; white-space: nowrap; overflow: hidden; }
+.chip-plate .prof b { color: #fff; font-weight: 700; }
+.chip-bar { position: absolute; left: 0.62em; right: 0.62em; top: 10.75em; height: 0.16em; border-radius: 1em; background: linear-gradient(90deg, var(--c), transparent); box-shadow: 0 0 0.4em var(--c); }
+.chip-grip { position: absolute; left: 0.2em; top: 4em; width: 0.22em; height: 2.2em; background: repeating-linear-gradient(180deg, rgba(255,255,255,.35) 0 0.12em, transparent 0.12em 0.32em); }
+.chip-pins { position: absolute; left: 1.25em; right: 1.25em; bottom: 0.12em; height: 1.05em; border-radius: 0.1em;
+  background: repeating-linear-gradient(90deg, #ffe7a3 0 0.34em, #b98a2c 0.34em 0.44em, transparent 0.44em 0.66em); box-shadow: 0 0 0.4em rgba(255,210,120,.3); }
+.chip-sheen { position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: screen; clip-path: var(--notch);
+  background: linear-gradient(112deg, transparent 30%, rgba(255,255,255,.18) 42%, rgba(127,220,255,.16) 47%, rgba(255,122,182,.12) 52%, transparent 62%); background-size: 260% 100%; background-position: var(--sheen, 50%) 0; }
+.chip .dim { position: absolute; inset: 0; background: #05060a; opacity: 0; pointer-events: none; z-index: 4; clip-path: var(--notch); }
+
+
+</style></head><body><div id="boards"></div>
+<script>
+const CHIP = "<div class=\"chip\" style=\"--c:#5fe0a8;--c2:#265a43\">\n    <div class=\"chip-edge\"></div>\n    <div class=\"chip-shell\"><div class=\"chip-body\">\n      <svg class=\"chip-circuit\" viewBox=\"0 0 100 139\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><path d=\"M4 88V100H14V127\"/><path d=\"M24 116H46V127\"/><path d=\"M95 64V114H72V127\"/><path d=\"M56 121V127\"/><path d=\"M4 30V60\"/><path d=\"M84 6H98\"/><circle cx=\"14\" cy=\"100\" r=\"1\"/><circle cx=\"46\" cy=\"116\" r=\"1\"/><circle cx=\"72\" cy=\"114\" r=\"1\"/></svg>\n      <div class=\"chip-head\"><span class=\"logo\">VXM</span><span class=\"code\">VX-04</span></div>\n      <div class=\"chip-pips\"><i class=\"on\"></i><i class=\"on\"></i><i class=\"\"></i></div>\n      <div class=\"chip-grip\"></div>\n      <div class=\"chip-win\"><div class=\"art\"><svg viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid slice\"><defs>\n    <linearGradient id=\"gdh81vb\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"10\" x2=\"0\" y2=\"90\"><stop offset=\"0\" stop-color=\"#b7f1d8\"/><stop offset=\"1\" stop-color=\"#5fe0a8\"/></linearGradient>\n    <filter id=\"gdh81vbf\" x=\"-30%\" y=\"-30%\" width=\"160%\" height=\"160%\"><feGaussianBlur stdDeviation=\"2.2\" result=\"b\"/><feMerge><feMergeNode in=\"b\"/><feMergeNode in=\"SourceGraphic\"/></feMerge></filter>\n    <radialGradient id=\"gdh81vbr\" cx=\".5\" cy=\".42\" r=\".6\"><stop offset=\"0\" stop-color=\"#5fe0a8\" stop-opacity=\".35\"/><stop offset=\"1\" stop-color=\"#05060a\" stop-opacity=\"0\"/></radialGradient></defs>\n    <rect width=\"100\" height=\"100\" fill=\"url(#gdh81vbr)\"/>\n    <g opacity=\".14\" stroke=\"#b7f1d8\" stroke-width=\".4\"><path d=\"M20 0V100M0 20H100\"/><path d=\"M40 0V100M0 40H100\"/><path d=\"M60 0V100M0 60H100\"/><path d=\"M80 0V100M0 80H100\"/></g>\n    <g filter=\"url(#gdh81vbf)\"><path d=\"M50 14c17 0 27 11 27 26 0 18-15 36-27 40-12-4-27-22-27-40 0-15 10-26 27-26z\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"3.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M30 42c6-1 13 3 16 10-7 2-14-2-16-10zM70 42c-6-1-13 3-16 10 7 2 14-2 16-10z\" fill=\"#b7f1d8\"/><path d=\"M45 68h10\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"50\" cy=\"8\" r=\"2\" fill=\"#b7f1d8\"/><path d=\"M14 30c4-3 7-3 10 0M76 30c3-3 6-3 10 0\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    </g></svg></div><i class=\"hud tl\"></i><i class=\"hud br\"></i><span class=\"kind\">COSMIC</span></div>\n      <div class=\"chip-plate\"><b class=\"nm\">\u5b87\u5b99\u4eba</b><div class=\"prof\"><span>PITCH <b>+4.0</b></span><span>TONE <b>+3.0</b></span></div></div>\n      <div class=\"chip-bar\"></div>\n      <div class=\"chip-pins\"></div>\n    </div></div>\n    <div class=\"chip-sheen\"></div>\n  </div>";
+const $=(s,e=document)=>e.querySelector(s);
+function el(tag,cls,style,parent,html){const e=document.createElement(tag);if(cls)e.className=cls;if(style)e.setAttribute('style',style);if(html)e.innerHTML=html;if(parent)parent.appendChild(e);return e;}
+const mix=(a,b,t)=>{const h=x=>[1,3,5].map(i=>parseInt(x.slice(i,i+2),16));const A=h(a),B=h(b);return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');};
+const GL='<defs><filter id="gl" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+function slab(parent,{x,y,w,h,r,z0,depth,n,inset,bg,extra=''}){for(let i=0;i<n;i++){const t=n==1?1:i/(n-1);const k=inset(t);el('div','L',`left:${x+k}px;top:${y+k}px;width:${w-2*k}px;height:${h-2*k}px;border-radius:${Math.max(4,r-k)}px;transform:translateZ(${(z0+depth*t).toFixed(2)}px);background:${bg(t,i)};${extra}`,parent);}}
+function ring3d(parent,{cx,cy,R,thick,z0,depth,n,bg,glowIn}){const m=`-webkit-mask:radial-gradient(circle,transparent ${R-thick}px,#000 ${R-thick+.6}px);mask:radial-gradient(circle,transparent ${R-thick}px,#000 ${R-thick+.6}px)`;for(let i=0;i<n;i++){const t=n==1?1:i/(n-1);el('div','L',`left:${cx-R}px;top:${cy-R}px;width:${2*R}px;height:${2*R}px;border-radius:50%;${m};transform:translateZ(${(z0+depth*t).toFixed(2)}px);background:${bg(t)}`,parent);}}
+
+function next(){
+ const a=el('div','gboard','background:radial-gradient(110% 55% at 50% 100%,rgba(190,165,255,.30),transparent 62%),radial-gradient(60% 40% at 72% 30%,rgba(140,220,255,.10),transparent 70%),linear-gradient(180deg,#141226,#07060f 75%)',$('#boards'));
+ el('div','face','background-image:linear-gradient(rgba(200,190,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(200,190,255,.06) 1px,transparent 1px);background-size:20px 20px;-webkit-mask-image:radial-gradient(60% 36% at 50% 80%,#000,transparent);mask-image:radial-gradient(60% 36% at 50% 80%,#000,transparent)',a);
+ el('div','tag','color:#fbf8ff',a,'<b>HOLO DECK — NEXT</b><span>浮遊する天板 × 光のすき間 × 立体ホログラム</span>');
+ el('div','face','left:30px;top:440px;width:330px;height:90px;border-radius:50%;background:radial-gradient(closest-side,rgba(205,180,255,.55),rgba(120,200,255,.12) 60%,transparent);filter:blur(14px)',a);
+ const sc=el('div','scene','left:30px;top:300px;width:330px;height:180px;perspective:1100px;perspective-origin:50% -80%',a);
+ const o=el('div','obj','left:0;top:0;width:330px;height:180px;transform:rotateX(62deg) rotateZ(-18deg)',sc);
+ const W=330,H=180,R=90;
+ // ---- graphite pedestal (smaller footprint) ----
+ slab(o,{x:0,y:0,w:W,h:H,r:R,z0:0,depth:12,n:12,inset:t=>22-t*4,bg:t=>`linear-gradient(90deg,#0d0c13,${mix('#2a2836','#3c3a4c',t)} 30%,${mix('#4c4a5e','#6a6680',t)} 46%,#242230 70%,#0b0a10)`});
+ // pedestal top: dark glass with a light ring
+ el('div','L',`left:18px;top:18px;width:${W-36}px;height:${H-36}px;border-radius:${R-18}px;transform:translateZ(12.5px);background:radial-gradient(closest-side,#2a2442,#0d0b16);box-shadow:inset 0 0 0 1.5px #d6c8ff,0 0 18px 3px rgba(200,180,255,.6)`,o);
+ // ---- light gap: volumetric glow between pedestal and the floating plate ----
+ // light pillars at the rim only: the space between stays dark, so the plate reads as floating
+ for(let i=0;i<12;i++){const z=14+i*2.3;el('div','L',`left:${24}px;top:${24}px;width:${W-48}px;height:${H-48}px;border-radius:${R-24}px;transform:translateZ(${z}px);border:1px solid rgba(214,198,255,${.55-i*.035});box-shadow:0 0 ${6+i}px rgba(190,170,255,${.35-i*.025})`,o);}
+ el('div','L',`left:40px;top:40px;width:${W-80}px;height:${H-80}px;border-radius:${R-40}px;transform:translateZ(13px);background:radial-gradient(closest-side,rgba(205,185,255,.55),rgba(140,120,255,.12) 60%,transparent);filter:blur(4px)`,o);
+ // ---- floating pearl-glass plate (thin, translucent edges) ----
+ slab(o,{x:0,y:0,w:W,h:H,r:R,z0:42,depth:10,n:12,inset:t=>3*(1-t),bg:t=>`linear-gradient(90deg,rgba(150,140,190,.55),rgba(235,230,250,${.55+t*.3}) 34%,rgba(255,255,255,${.6+t*.3}) 46%,rgba(200,192,225,.55) 70%,rgba(120,110,160,.5))`});
+ const top=el('div','L',`left:0;top:0;width:${W}px;height:${H}px;border-radius:${R}px;transform:translateZ(52.5px);background:radial-gradient(110% 90% at 25% 0%,rgba(255,255,255,.9) 0%,rgba(246,243,252,.62) 40%,rgba(225,220,240,.58) 100%);box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.95),inset 0 0 0 3px rgba(200,180,255,.35),inset 0 -8px 18px rgba(150,130,210,.25)`,o);
+ // edge light (the rim glows)
+ el('div','L',`left:0;top:0;width:${W}px;height:${H}px;border-radius:${R}px;transform:translateZ(42px);box-shadow:0 0 0 1px rgba(214,200,255,.9),0 0 16px 2px rgba(200,180,255,.55)`,o);
+ // chip slit (rear-left), cut through the plate
+ el('div','face','left:46px;top:16px;width:120px;height:8px;border-radius:4px;background:#0b0915;box-shadow:inset 0 2px 3px #000,0 0 0 1px rgba(200,180,255,.7),0 0 12px rgba(200,180,255,.8)',top);
+ // holographic touch UI printed in light (no physical keys)
+ top.insertAdjacentHTML('beforeend',`
+  <div style="position:absolute;left:40px;top:48px;font-family:var(--tech);font-size:4.8px;letter-spacing:.36em;color:#8a7fc0">VOICE CORE · LINKED</div>
+  <div style="position:absolute;left:40px;top:58px;font-family:var(--sora);font-weight:300;font-size:16px;letter-spacing:.08em;color:#3d3366">宇宙人</div>
+  <div style="position:absolute;left:40px;top:80px;font-family:var(--mono);font-size:6.5px;color:#7a6fb0">212 Hz · ♪ G#3 · −12 dB</div>
+  <div style="position:absolute;left:40px;top:96px;width:110px;height:2px;border-radius:1px;background:rgba(120,100,190,.2)"><i style="position:absolute;left:0;top:0;bottom:0;width:68%;border-radius:1px;background:linear-gradient(90deg,#b9a5ff,#ff9fd6);box-shadow:0 0 6px #b9a5ff"></i><i style="position:absolute;left:68%;top:-3px;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #b9a5ff,0 0 8px #b9a5ff"></i></div>
+  <div style="position:absolute;left:36px;top:112px;display:flex;gap:16px">
+   ${['<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M3 14h4v6H3zM17 14h4v6h-4z"/>','<circle cx="12" cy="12" r="5"/>','<path d="M5 4v16M12 4v16M19 4v16"/>','<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>'].map((d,i)=>`<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="${i==1?'#ff6fae':'#7e6fc8'}" stroke-width="1.6" stroke-linecap="round" style="filter:drop-shadow(0 0 3px ${i==1?'#ff6fae':'#b9a5ff'})">${d}</svg>`).join('')}
+  </div>`);
+ // emitter: a raised collar grown out of the plate, with a recessed lens
+ const ex=250,ey=86;
+ el('div','face',`left:${ex-60}px;top:${ey-60}px;width:120px;height:120px;border-radius:50%;background:radial-gradient(closest-side,transparent 72%,rgba(70,55,120,.35) 80%,transparent 100%)`,top);
+ ring3d(o,{cx:ex,cy:ey,R:48,thick:13,z0:52.5,depth:9,n:12,bg:t=>`linear-gradient(90deg,${mix('#8d88a6','#c9c4da',t)},#ffffff 42%,${mix('#d6d1e4','#f4f1fa',t)} 60%,${mix('#7a7592','#b2adc6',t)})`});
+ ring3d(o,{cx:ex,cy:ey,R:48,thick:13,z0:61.8,depth:0,n:1,bg:()=>'repeating-conic-gradient(#ffffff 0 1.5deg,#e4dfef 1.5deg 3deg)'});
+ el('div','L',`left:${ex-48}px;top:${ey-48}px;width:96px;height:96px;border-radius:50%;transform:translateZ(62px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.95),0 0 0 .6px rgba(150,140,190,.6)`,o);
+ ring3d(o,{cx:ex,cy:ey,R:36,thick:2,z0:55,depth:6.5,n:6,bg:()=>'linear-gradient(180deg,#2a2240,#0d0a18)'});
+ el('div','L',`left:${ex-35}px;top:${ey-35}px;width:70px;height:70px;border-radius:50%;transform:translateZ(55.5px);background:radial-gradient(circle,#ffffff 0%,#efe8ff 14%,#a68dff 36%,#3a2c66 62%,#120e22 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),inset 0 4px 10px rgba(0,0,0,.6),0 0 22px rgba(185,165,255,.8)`,o);
+ el('div','L',`left:${ex-60}px;top:${ey-60}px;width:120px;height:120px;border-radius:50%;transform:translateZ(62.3px);background:radial-gradient(closest-side,rgba(200,180,255,0) 56%,rgba(205,185,255,.30) 62%,transparent 74%)`,o);
+ // ---- hologram: projected from the lens as a soft beam; the disc rests on top of it ----
+ const V=el('div','p3',`left:${ex-110}px;top:${ey-230}px;width:220px;height:230px;transform-origin:50% 100%;transform:translateZ(56px) rotateZ(18deg) rotateX(-90deg)`,o);
+ el('div','face','',V,`<svg viewBox="0 0 220 230" width="220" height="230" style="position:absolute;inset:0"><defs><linearGradient id="cn" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f1ebff" stop-opacity=".8"/><stop offset=".6" stop-color="#d6c8ff" stop-opacity=".26"/><stop offset="1" stop-color="#d6c8ff" stop-opacity="0"/></linearGradient><filter id="bb"><feGaussianBlur stdDeviation="2.6"/></filter></defs><polygon points="82,230 138,230 182,96 38,96" fill="url(#cn)" filter="url(#bb)"/><polygon points="100,230 120,230 146,110 74,110" fill="url(#cn)" opacity=".8" filter="url(#bb)"/><line x1="101" y1="228" x2="44" y2="104" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/><line x1="107" y1="228" x2="88" y2="104" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/><line x1="113" y1="228" x2="132" y2="104" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/><line x1="119" y1="228" x2="176" y2="104" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/><ellipse cx="110" cy="228" rx="28" ry="4" fill="#fff" opacity=".75" filter="url(#bb)"/></svg>`);
+ for(let i=0;i<10;i++){const x=86+((i*23)%48),d=(i*.41)%3;el('i','',`position:absolute;left:${x}px;top:${170+(i*13)%50}px;width:2px;height:2px;border-radius:50%;background:#fff;box-shadow:0 0 6px #e6dcff;animation:rise ${2.6+d}s linear ${d}s infinite`,V);}
+ const N=96,c=80;
+ const bars=Array.from({length:N},(_,i)=>{const an=i/N*Math.PI*2-Math.PI/2;const v=.25+.75*Math.pow(Math.abs(Math.sin(i*.37)*Math.cos(i*.11+.6)),.8);const r1=58,r2=58+v*16;const col=mix('#cbb8ff','#ffb3e2',(Math.sin(an)+1)/2);return `<line x1="${(c+Math.cos(an)*r1).toFixed(1)}" y1="${(c+Math.sin(an)*r1).toFixed(1)}" x2="${(c+Math.cos(an)*r2).toFixed(1)}" y2="${(c+Math.sin(an)*r2).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-linecap="round"/>`;}).join('');
+ const disc=el('div','face','left:30px;top:-6px;width:160px;height:160px;animation:flick 5s infinite',V);
+ disc.innerHTML=`<svg viewBox="0 0 160 160" width="160" height="160" style="position:absolute;inset:0;opacity:.35;transform:translate(2px,1px)">${bars.replace(/stroke="#[0-9a-f]+"/g,'stroke="#7fe8ff"')}</svg>
+  <svg viewBox="0 0 160 160" width="160" height="160" style="position:absolute;inset:0">${GL}<g filter="url(#gl)">${bars}</g><circle cx="80" cy="80" r="52" fill="rgba(214,200,255,.08)" stroke="rgba(255,255,255,.35)" stroke-width=".8"/></svg>
+  <svg viewBox="0 0 160 160" width="160" height="160" style="position:absolute;inset:0;animation:spin 12s linear infinite"><circle cx="80" cy="80" r="46" fill="none" stroke="#e6dcff" stroke-opacity=".75" stroke-width=".8" stroke-dasharray="40 12 4 12"/></svg>
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center">
+   <span style="font-family:var(--tech);font-size:4.4px;letter-spacing:.38em;color:#d8ccff">VX-04 · COSMIC</span>
+   <span style="font-family:var(--sora);font-weight:300;font-size:17px;letter-spacing:.1em;color:#fff;text-shadow:0 0 6px #fff,0 0 14px #c8b4ff,0 0 26px rgba(200,180,255,.9)">宇宙人</span>
+   <span style="font-family:var(--mono);font-size:6px;color:#e6dcff">212 Hz · ♪ G#3</span>
+  </div>
+  <div style="position:absolute;inset:28px;border-radius:50%;background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px)"></div>`;
+ // ---- chip hovering above its slit, held by a data-light beam ----
+ const sx=106,sy=20;
+ const B=el('div','p3',`left:${sx-60}px;top:${sy-60}px;width:120px;height:60px;transform-origin:50% 100%;transform:translateZ(53px) rotateZ(18deg) rotateX(-90deg)`,o);
+ el('div','face','',B,`<svg viewBox="0 0 120 60" width="120" height="60"><defs><linearGradient id="lb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#e6dcff" stop-opacity=".85"/><stop offset="1" stop-color="#c8b4ff" stop-opacity="0"/></linearGradient></defs><polygon points="14,60 106,60 112,0 8,0" fill="url(#lb)" opacity=".35"/>${[22,46,74,98].map(x=>`<rect x="${x}" y="4" width=".8" height="56" fill="#fff" opacity=".5"/>`).join('')}</svg>`);
+ el('div','p3',`left:${sx-60}px;top:${sy-166}px;width:120px;height:166px;transform-origin:50% 100%;--cz2:92px;transform:translateZ(86px) rotateZ(18deg) rotateX(-90deg) scale(.8);animation:hoverChip 3.2s ease-in-out infinite;font-size:12px`,o,CHIP);
+}
+next();
+</script></body></html>

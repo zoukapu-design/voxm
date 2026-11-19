@@ -1,0 +1,159 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VOXM gadget candidates</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
+<style>
+:root{--tech:'Michroma','Arial',sans-serif;--mono:ui-monospace,Menlo,monospace;--violet:#a487ff}
+*{box-sizing:border-box}body{margin:0;background:#04050a;color:#eceef6;font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif}
+.boards{display:flex;flex-wrap:wrap;gap:24px;padding:24px}
+.art{position:relative;width:390px;height:470px;overflow:hidden;border-radius:28px;background:radial-gradient(120% 70% at 50% 100%,rgba(123,92,255,.22),transparent 60%),radial-gradient(80% 50% at 50% 0%,rgba(60,120,255,.10),transparent 70%),#06070d;border:1px solid rgba(255,255,255,.08)}
+.art::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:26px 26px;-webkit-mask-image:radial-gradient(80% 60% at 50% 60%,#000,transparent);mask-image:radial-gradient(80% 60% at 50% 60%,#000,transparent)}
+.tag{position:absolute;left:20px;top:18px;z-index:50}.tag b{display:block;font-family:var(--tech);font-size:15px;letter-spacing:.2em}.tag span{font-size:12px;color:#9096ab}
+.letter{position:absolute;right:20px;top:14px;font-family:var(--tech);font-size:30px;color:rgba(164,135,255,.35);z-index:50}
+.scene{position:absolute;transform-style:preserve-3d}
+.obj{position:absolute;transform-style:preserve-3d}
+.L{position:absolute;inset:0;backface-visibility:visible}
+.face{position:absolute;inset:0}
+.floor{position:absolute;border-radius:50%;filter:blur(10px)}
+.chip3d{position:absolute;transform-style:preserve-3d}
+.mono-t{font-family:var(--tech)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinZ{to{transform:translateZ(var(--hz)) rotateZ(360deg)}}
+@keyframes pulse{50%{opacity:.55}}
+@keyframes scan{from{transform:translateY(-100%)}to{transform:translateY(100%)}}
+@keyframes bob{50%{transform:translateZ(calc(var(--pz) + 6px))}}
+/* ---------- memory chip (data cartridge) — sized in em ---------- */
+.chip { --notch: polygon(0.5em 0, calc(100% - 1.9em) 0, 100% 1.9em, 100% calc(100% - 2em), calc(100% - 0.55em) calc(100% - 1.45em), calc(100% - 1.05em) calc(100% - 1.45em), calc(100% - 1.05em) 100%, 1.05em 100%, 1.05em calc(100% - 1.45em), 0.55em calc(100% - 1.45em), 0 calc(100% - 2em), 0 0.5em);
+  --chamfer: var(--notch);
+  position: relative; width: 10em; height: 13.86em; }
+.chip-edge { position: absolute; inset: 0; clip-path: var(--notch); transform: translate(0.16em, 0.24em); background: linear-gradient(180deg, color-mix(in srgb, var(--c) 45%, #000), #05060a); opacity: .95; }
+.chip-shell { position: absolute; inset: 0; clip-path: var(--notch); padding: 0.09em;
+  background: linear-gradient(160deg, #ffffff 0%, var(--c) 18%, rgba(255,255,255,.25) 40%, var(--c2) 62%, var(--c) 85%, #fff 100%); }
+.chip-body { position: relative; height: 100%; clip-path: var(--notch); overflow: hidden;
+  background:
+    radial-gradient(90% 55% at 50% 30%, color-mix(in srgb, var(--c) 32%, transparent), transparent 70%),
+    linear-gradient(165deg, color-mix(in srgb, var(--c) 30%, #0b0c16) 0%, #090a13 38%, #070810 70%, color-mix(in srgb, var(--c) 22%, #070810) 100%); }
+.chip-circuit { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; pointer-events: none; }
+.chip-circuit path { fill: none; stroke: var(--c); stroke-width: .35; stroke-linecap: round; }
+.chip-circuit circle { fill: var(--c); }
+.chip-head { position: absolute; left: 0.75em; right: 2.1em; top: 0.5em; height: 1.1em; display: flex; align-items: center; gap: 0.4em; }
+.chip-head .logo { font-family: var(--tech); font-size: 0.5em; letter-spacing: .12em; color: #fff; padding: 0.15em 0.4em; border: 1px solid rgba(255,255,255,.4); border-radius: 0.2em; }
+.chip-head .code { font-family: var(--mono); font-size: 0.48em; color: color-mix(in srgb, var(--c) 70%, #fff); letter-spacing: .06em; }
+.chip-pips { position: absolute; right: 0.55em; top: 2.25em; display: flex; flex-direction: column; gap: 0.18em; }
+.chip-pips i { width: 0.32em; height: 0.32em; transform: rotate(45deg); background: rgba(255,255,255,.18); }
+.chip-pips i.on { background: var(--c); box-shadow: 0 0 0.35em var(--c); }
+.chip-win { position: absolute; left: 0.62em; right: 1.15em; top: 1.95em; height: 6.55em; border-radius: 0.35em; overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, var(--c2), #05060a 80%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent), 0 0 0.8em -0.2em var(--c); }
+.chip-win img, .chip-win .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
+.chip-win .art svg { width: 100%; height: 100%; }
+.chip-win .mono { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--tech); font-size: 3em; color: #fff; text-shadow: 0 0 0.3em var(--c); }
+.chip-win::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), linear-gradient(180deg, transparent 60%, rgba(5,6,10,.75)); }
+.chip-win .hud { position: absolute; width: 0.7em; height: 0.7em; border: 0 solid #fff; opacity: .85; z-index: 2; }
+.chip-win .hud.tl { left: 0.25em; top: 0.25em; border-left-width: 1.5px; border-top-width: 1.5px; }
+.chip-win .hud.br { right: 0.25em; bottom: 0.25em; border-right-width: 1.5px; border-bottom-width: 1.5px; }
+.chip-win .kind { position: absolute; left: 0.45em; bottom: 0.35em; z-index: 2; font-family: var(--tech); font-size: 0.4em; letter-spacing: .2em; color: #e8e6ff; }
+.chip-win .badge { position: absolute; right: 0.35em; top: 0.35em; z-index: 2; font-size: 0.42em; font-weight: 800; padding: 0.2em 0.5em; border-radius: 1em; background: rgba(5,6,10,.75); border: 1px solid rgba(255,255,255,.25); }
+.chip-plate { position: absolute; left: 0.62em; right: 0.62em; top: 8.75em; }
+.chip-plate .nm { display: block; font-size: 0.92em; font-weight: 900; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; text-shadow: 0 0 0.5em color-mix(in srgb, var(--c) 60%, transparent); }
+.chip-plate .prof { display: flex; gap: 0.5em; margin-top: 0.25em; font-family: var(--mono); font-size: 0.46em; color: #aeb3c6; white-space: nowrap; overflow: hidden; }
+.chip-plate .prof b { color: #fff; font-weight: 700; }
+.chip-bar { position: absolute; left: 0.62em; right: 0.62em; top: 10.75em; height: 0.16em; border-radius: 1em; background: linear-gradient(90deg, var(--c), transparent); box-shadow: 0 0 0.4em var(--c); }
+.chip-grip { position: absolute; left: 0.2em; top: 4em; width: 0.22em; height: 2.2em; background: repeating-linear-gradient(180deg, rgba(255,255,255,.35) 0 0.12em, transparent 0.12em 0.32em); }
+.chip-pins { position: absolute; left: 1.25em; right: 1.25em; bottom: 0.12em; height: 1.05em; border-radius: 0.1em;
+  background: repeating-linear-gradient(90deg, #ffe7a3 0 0.34em, #b98a2c 0.34em 0.44em, transparent 0.44em 0.66em); box-shadow: 0 0 0.4em rgba(255,210,120,.3); }
+.chip-sheen { position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: screen; clip-path: var(--notch);
+  background: linear-gradient(112deg, transparent 30%, rgba(255,255,255,.18) 42%, rgba(127,220,255,.16) 47%, rgba(255,122,182,.12) 52%, transparent 62%); background-size: 260% 100%; background-position: var(--sheen, 50%) 0; }
+.chip .dim { position: absolute; inset: 0; background: #05060a; opacity: 0; pointer-events: none; z-index: 4; clip-path: var(--notch); }
+
+
+.chip{--c:#5fe0a8}
+</style></head><body><div class="boards" id="boards"></div>
+<script>
+const CHIP = "<div class=\"chip\" style=\"--c:#5fe0a8;--c2:#265a43\">\n    <div class=\"chip-edge\"></div>\n    <div class=\"chip-shell\"><div class=\"chip-body\">\n      <svg class=\"chip-circuit\" viewBox=\"0 0 100 139\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><path d=\"M4 88V100H14V127\"/><path d=\"M24 116H46V127\"/><path d=\"M95 64V114H72V127\"/><path d=\"M56 121V127\"/><path d=\"M4 30V60\"/><path d=\"M84 6H98\"/><circle cx=\"14\" cy=\"100\" r=\"1\"/><circle cx=\"46\" cy=\"116\" r=\"1\"/><circle cx=\"72\" cy=\"114\" r=\"1\"/></svg>\n      <div class=\"chip-head\"><span class=\"logo\">VXM</span><span class=\"code\">VX-04</span></div>\n      <div class=\"chip-pips\"><i class=\"on\"></i><i class=\"on\"></i><i class=\"\"></i></div>\n      <div class=\"chip-grip\"></div>\n      <div class=\"chip-win\"><div class=\"art\"><svg viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid slice\"><defs>\n    <linearGradient id=\"gdh81vb\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"10\" x2=\"0\" y2=\"90\"><stop offset=\"0\" stop-color=\"#b7f1d8\"/><stop offset=\"1\" stop-color=\"#5fe0a8\"/></linearGradient>\n    <filter id=\"gdh81vbf\" x=\"-30%\" y=\"-30%\" width=\"160%\" height=\"160%\"><feGaussianBlur stdDeviation=\"2.2\" result=\"b\"/><feMerge><feMergeNode in=\"b\"/><feMergeNode in=\"SourceGraphic\"/></feMerge></filter>\n    <radialGradient id=\"gdh81vbr\" cx=\".5\" cy=\".42\" r=\".6\"><stop offset=\"0\" stop-color=\"#5fe0a8\" stop-opacity=\".35\"/><stop offset=\"1\" stop-color=\"#05060a\" stop-opacity=\"0\"/></radialGradient></defs>\n    <rect width=\"100\" height=\"100\" fill=\"url(#gdh81vbr)\"/>\n    <g opacity=\".14\" stroke=\"#b7f1d8\" stroke-width=\".4\"><path d=\"M20 0V100M0 20H100\"/><path d=\"M40 0V100M0 40H100\"/><path d=\"M60 0V100M0 60H100\"/><path d=\"M80 0V100M0 80H100\"/></g>\n    <g filter=\"url(#gdh81vbf)\"><path d=\"M50 14c17 0 27 11 27 26 0 18-15 36-27 40-12-4-27-22-27-40 0-15 10-26 27-26z\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"3.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M30 42c6-1 13 3 16 10-7 2-14-2-16-10zM70 42c-6-1-13 3-16 10 7 2 14-2 16-10z\" fill=\"#b7f1d8\"/><path d=\"M45 68h10\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"50\" cy=\"8\" r=\"2\" fill=\"#b7f1d8\"/><path d=\"M14 30c4-3 7-3 10 0M76 30c3-3 6-3 10 0\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    </g></svg></div><i class=\"hud tl\"></i><i class=\"hud br\"></i><span class=\"kind\">COSMIC</span></div>\n      <div class=\"chip-plate\"><b class=\"nm\">\u5b87\u5b99\u4eba</b><div class=\"prof\"><span>PITCH <b>+4.0</b></span><span>TONE <b>+3.0</b></span></div></div>\n      <div class=\"chip-bar\"></div>\n      <div class=\"chip-pins\"></div>\n    </div></div>\n    <div class=\"chip-sheen\"></div>\n  </div>";
+const $=(s,e=document)=>e.querySelector(s);
+function el(tag, cls, style, parent, html){const e=document.createElement(tag);if(cls)e.className=cls;if(style)e.setAttribute('style',style);if(html)e.innerHTML=html;if(parent)parent.appendChild(e);return e;}
+function extrude(parent,{n,depth,shape,bg,z0=0,w,h,x=0,y=0,glowAt=[],glow}){
+  for(let i=0;i<n;i++){const z=z0+depth*i/(n-1);const L=el('div','L',`left:${x}px;top:${y}px;width:${w}px;height:${h}px;${shape};transform:translateZ(${z.toFixed(2)}px);background:${glowAt.includes(i)?glow:bg(i/(n-1))}`,parent);}
+}
+const metal=(t)=>`linear-gradient(90deg,#08090e 0%,${t<.5?'#2e3240':'#3c4150'} 18%,#8d93a3 36%,#4a4f5e 52%,#1b1d26 75%,#07080c 100%)`;
+const darkmetal=(t)=>`linear-gradient(90deg,#050609 0%,#1d2029 20%,#5a6070 38%,#262a35 55%,#0e0f15 80%,#050609 100%)`;
+function ticks(n,r1,r2,size,cls,start=-90,span=360,color='#c9b8ff',lit=1){let s='';for(let i=0;i<n;i++){const a=(start+i*span/n)*Math.PI/180;const c=Math.cos(a),si=Math.sin(a);const on=i/n<lit;s+=`<line x1="${(size/2+c*r1).toFixed(1)}" y1="${(size/2+si*r1).toFixed(1)}" x2="${(size/2+c*r2).toFixed(1)}" y2="${(size/2+si*r2).toFixed(1)}" stroke="${on?color:'rgba(164,135,255,.18)'}" stroke-width="2.4" stroke-linecap="round" ${on?'filter="url(#gl)"':''}/>`;}return s;}
+const GL='<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+function board(letter,title,sub){const a=el('div','art',null,$('#boards'));el('div','tag',null,a,`<b>${title}</b><span>${sub}</span>`);el('div','letter',null,a,letter);return a;}
+function slotBlock(parent,{x,y,w,h,z0,depth}){extrude(parent,{n:12,depth,z0,x,y,w,h,shape:'border-radius:8px',bg:metal});const t=el('div','face',`left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:8px;transform:translateZ(${z0+depth+.5}px);background:linear-gradient(180deg,#3a3e4c,#15171f);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)`,parent);el('div','face',`left:8px;right:8px;top:${h/2-3}px;height:6px;border-radius:3px;background:#000;box-shadow:0 0 0 1px rgba(164,135,255,.6),0 0 12px 2px rgba(164,135,255,.55)`,t);}
+function chipAt(parent,bx,by,z){return chipIn(parent,{x:bx-60,y:by-166,z});}
+function chipIn(parent,{x,y,z,rx=-90,scale=1}){const c=el('div','chip3d',`left:${x}px;top:${y}px;width:120px;height:166px;transform-origin:50% 100%;transform:translateZ(${z}px) rotateX(${rx}deg) scale(${scale});font-size:12px`,parent,CHIP);return c;}
+
+/* ===== A: HALO — round reactor puck ===== */
+(()=>{const a=board('A','HALO','円形リアクター型。上面のリングが声で光る');
+ el('div','floor','left:40px;top:330px;width:310px;height:90px;background:radial-gradient(closest-side,rgba(123,92,255,.55),transparent)',a);
+ const sc=el('div','scene','left:45px;top:150px;width:300px;height:300px;perspective:1000px;perspective-origin:50% -30%',a);
+ const o=el('div','obj','left:0;top:0;width:300px;height:300px;transform:rotateX(60deg)',sc);
+ extrude(o,{n:36,depth:44,w:300,h:300,shape:'border-radius:50%',bg:metal,glowAt:[17,18],glow:'linear-gradient(90deg,#1c1240,#c8b4ff 35%,#7fdcff 55%,#3a2a80 80%,#140c30)'});
+ const top=el('div','face',`width:300px;height:300px;border-radius:50%;transform:translateZ(44.5px);background:conic-gradient(from 210deg,#1b1d27,#a9afbd 12%,#2a2d38 30%,#6c7282 50%,#1b1d27 68%,#8d93a3 85%,#1b1d27);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)`,o);
+ const gl=el('div','face',`inset:20px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#1a1430 0%,#08080f 62%,#020205 100%);box-shadow:inset 0 0 0 2px #000,inset 0 0 40px rgba(123,92,255,.45)`,top);
+ el('div','face','inset:0',gl,`<svg viewBox="0 0 260 260" width="260" height="260">${GL}${ticks(72,104,120,260,'',-90,360,'#d4c7ff',.62)}<circle cx="130" cy="130" r="92" fill="none" stroke="#7fdcff" stroke-opacity=".35" stroke-dasharray="30 8 4 8"/></svg>`);
+ el('div','face','inset:62px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#ffffff 0%,#cdbfff 12%,#8b6cff 32%,rgba(90,60,220,.35) 60%,transparent 72%);filter:blur(.5px);animation:pulse 2.4s infinite',gl);
+ el('div','face','left:85px;top:95px;width:130px;height:130px;border-radius:50%;border:1.5px dashed rgba(127,220,255,.75);box-shadow:0 0 14px rgba(127,220,255,.5);--hz:58px;transform:translateZ(58px);animation:spinZ 9s linear infinite',o);
+ el('div','face','left:105px;top:115px;width:90px;height:90px;border-radius:50%;transform:translateZ(46px);background:radial-gradient(circle at 38% 30%,rgba(255,255,255,.55),rgba(255,255,255,0) 30%),radial-gradient(circle,rgba(200,180,255,.25),rgba(120,90,255,.05) 70%,transparent 72%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)',o);
+ slotBlock(o,{x:78,y:22,w:144,h:30,z0:44,depth:16});
+ chipAt(o,150,37,40);
+})();
+
+/* ===== B: MONOLITH — upright slab with real depth ===== */
+(()=>{const a=board('B','MONOLITH','縦型スラブ。上からチップを差し込む');
+ el('div','floor','left:70px;top:390px;width:260px;height:60px;background:radial-gradient(closest-side,rgba(123,92,255,.6),transparent)',a);
+ const sc=el('div','scene','left:95px;top:185px;width:200px;height:260px;perspective:900px;perspective-origin:30% 0%',a);
+ const o=el('div','obj','left:0;top:0;width:200px;height:260px;transform:rotateX(-14deg) rotateY(-34deg)',sc);
+ const notch='clip-path:polygon(0 0,28% 0,28% 6%,72% 6%,72% 0,100% 0,100% 100%,0 100%);border-radius:34px';
+ extrude(o,{n:40,depth:62,z0:-31,w:200,h:260,shape:notch,bg:(t)=>`linear-gradient(180deg,#9aa0ae 0%,#3a3e4b 30%,#20232d 70%,#0b0c12 100%)`,glowAt:[19,20],glow:'linear-gradient(180deg,#e5dcff,#a487ff 40%,#5b3fd6 80%,#2a1c70)'});
+ const f=el('div','face',`width:200px;height:260px;${notch};transform:translateZ(31.5px);background:radial-gradient(90% 60% at 30% 0%,rgba(255,255,255,.14),transparent 60%),linear-gradient(180deg,#191b28,#07080e);box-shadow:inset 0 0 0 1.5px rgba(200,190,255,.45)`,o);
+ el('div','face','left:14px;top:30px;width:172px;height:216px;border-radius:26px;background:linear-gradient(180deg,rgba(164,135,255,.08),rgba(0,0,0,0));box-shadow:inset 0 0 0 1px rgba(164,135,255,.25)',f);
+ el('div','face',`left:30px;top:60px;width:140px;height:140px`,f,`<svg viewBox="0 0 140 140" width="140" height="140">${GL}${ticks(48,58,68,140,'',-210,240,'#d4c7ff',.7)}<circle cx="70" cy="70" r="44" fill="none" stroke="#7fdcff" stroke-opacity=".5" stroke-dasharray="20 6 3 6"/></svg>`);
+ el('div','face','left:62px;top:92px;width:76px;height:76px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#fff 0%,#cdbfff 12%,#8b6cff 35%,rgba(90,60,220,.25) 62%,transparent 72%);animation:pulse 2.4s infinite',f);
+ el('div','face','left:20px;top:214px;width:160px;height:20px;text-align:center;font-family:var(--tech);font-size:9px;letter-spacing:.4em;color:#cfc3ff',f,'LIVE');
+ el('div','face','left:98px;top:20px;width:4px;height:30px;border-radius:2px;background:#cbbdff;box-shadow:0 0 10px #a487ff',f);
+ chipIn(o,{x:40,y:-112,z:0,rx:0,scale:1});
+})();
+
+/* ===== C: HOLO DECK — low slab projecting a hologram ===== */
+(()=>{const a=board('C','HOLO DECK','低い台座から声をホログラム投影');
+ el('div','floor','left:30px;top:350px;width:330px;height:90px;background:radial-gradient(closest-side,rgba(127,220,255,.35),rgba(123,92,255,.25) 50%,transparent)',a);
+ const sc=el('div','scene','left:35px;top:190px;width:320px;height:220px;perspective:1000px;perspective-origin:50% -40%',a);
+ const o=el('div','obj','left:0;top:0;width:320px;height:220px;transform:rotateX(62deg)',sc);
+ const oct='clip-path:polygon(14% 0,86% 0,100% 22%,100% 78%,86% 100%,14% 100%,0 78%,0 22%)';
+ extrude(o,{n:28,depth:36,w:320,h:220,shape:oct,bg:darkmetal,glowAt:[22,23],glow:'linear-gradient(90deg,#0a2a3a,#7fdcff 40%,#c8b4ff 60%,#20145a)'});
+ const top=el('div','face',`width:320px;height:220px;${oct};transform:translateZ(36.5px);background:linear-gradient(180deg,#1c1f2e,#0a0b12)`,o);
+ el('div','face',`inset:3px;${oct};background:radial-gradient(60% 70% at 50% 55%,rgba(127,220,255,.18),transparent 70%),repeating-linear-gradient(60deg,rgba(164,135,255,.06) 0 1px,transparent 1px 12px),repeating-linear-gradient(-60deg,rgba(164,135,255,.06) 0 1px,transparent 1px 12px),#0b0c15`,top);
+ el('div','face','left:160px;top:60px;width:120px;height:120px',top,`<svg viewBox="0 0 120 120" width="120" height="120">${GL}<circle cx="60" cy="60" r="56" fill="none" stroke="#7fdcff" stroke-width="2" filter="url(#gl)"/><circle cx="60" cy="60" r="42" fill="none" stroke="#a487ff" stroke-width="1.5" stroke-dasharray="6 4" filter="url(#gl)"/><circle cx="60" cy="60" r="20" fill="#cfe9ff" filter="url(#gl)"/></svg>`);
+  // light cone + hologram (vertical planes standing on the deck)
+ const holo=el('div','face',`left:70px;top:110px;width:180px;height:190px;transform-origin:50% 100%;transform:translateZ(37px) translateY(-190px) rotateX(-90deg);transform-origin:50% 100%`,o);
+ const hp=el('div','face','inset:0;transform-origin:50% 100%;',o);
+ hp.remove();
+ const H=el('div','chip3d',`left:120px;top:-80px;width:200px;height:190px;transform-origin:50% 100%;transform:translateZ(37px) rotateX(-90deg);`,o);
+ H.style.top=(120-190)+'px';
+ el('div','face','inset:0;background:linear-gradient(0deg,rgba(127,220,255,.35),rgba(127,220,255,.04) 70%,transparent);clip-path:polygon(40% 100%,60% 100%,100% 0,0 0)',H);
+ el('div','face','left:30px;top:6px;width:140px;height:140px;border-radius:50%;',H,`<svg viewBox="0 0 140 140" width="140" height="140">${GL}<path d="${(()=>{let d='';for(let i=0;i<=96;i++){const k=i/96,an=k*Math.PI*2;const r=46+Math.sin(k*Math.PI*10)*7+Math.sin(k*Math.PI*26)*4;d+=(i?'L':'M')+(70+Math.cos(an)*r).toFixed(1)+' '+(70+Math.sin(an)*r).toFixed(1);}return d;})()}" fill="none" stroke="#9ff0ff" stroke-width="2" filter="url(#gl)"/><circle cx="70" cy="70" r="60" fill="none" stroke="#a487ff" stroke-opacity=".6" stroke-dasharray="3 6"/><text x="70" y="76" text-anchor="middle" font-size="15" font-weight="900" fill="#fff" filter="url(#gl)">宇宙人</text></svg>`);
+ el('div','face','left:30px;top:6px;width:140px;height:140px;border-radius:50%;background:repeating-linear-gradient(0deg,rgba(159,240,255,.12) 0 1px,transparent 1px 4px);opacity:.8',H);
+ slotBlock(o,{x:22,y:26,w:144,h:28,z0:36,depth:14});
+ chipAt(o,94,40,34);
+})();
+
+/* ===== D: REACTOR — hex core with floating armour ===== */
+(()=>{const a=board('D','REACTOR','六角コアと浮遊する装甲プレート');
+ el('div','floor','left:40px;top:340px;width:310px;height:90px;background:radial-gradient(closest-side,rgba(255,122,182,.25),rgba(123,92,255,.45) 40%,transparent)',a);
+ const sc=el('div','scene','left:55px;top:155px;width:280px;height:280px;perspective:1000px;perspective-origin:50% -30%',a);
+ const o=el('div','obj','left:0;top:0;width:280px;height:280px;transform:rotateX(58deg) rotateZ(0deg)',sc);
+ const hex='clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)';
+ extrude(o,{n:30,depth:40,x:40,y:40,w:200,h:200,shape:hex,bg:metal,glowAt:[14,15],glow:'linear-gradient(90deg,#3a1030,#ff7ab6 35%,#c8b4ff 60%,#2a1c70)'});
+ const top=el('div','face',`left:40px;top:40px;width:200px;height:200px;${hex};transform:translateZ(40.5px);background:conic-gradient(from 0deg,#1d2030,#4a4f62,#1d2030,#4a4f62,#1d2030,#4a4f62,#1d2030)`,o);
+ el('div','face',`inset:10px;${hex};background:radial-gradient(circle,#2a1450 0%,#0a0a12 70%)`,top);
+ el('div','face','left:30px;top:30px;width:140px;height:140px',top,`<svg viewBox="0 0 140 140" width="140" height="140">${GL}${[0,1,2,3,4,5].map(i=>{const a1=(i*60-90+4)*Math.PI/180,a2=(i*60-30-4)*Math.PI/180;const p=(r,a)=>`${(70+Math.cos(a)*r).toFixed(1)} ${(70+Math.sin(a)*r).toFixed(1)}`;return `<path d="M${p(40,a1)}L${p(64,a1)}L${p(64,a2)}L${p(40,a2)}Z" fill="${i<4?'rgba(200,180,255,.85)':'rgba(164,135,255,.15)'}" ${i<4?'filter="url(#gl)"':''}/>`}).join('')}</svg>`);
+ el('div','face','left:70px;top:70px;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 45% 40%,#fff,#ffb3d1 20%,#a487ff 50%,transparent 72%);animation:pulse 2s infinite',top);
+ // floating armour plates
+ for(let i=0;i<6;i++){const ang=i*60;const g=el('div','obj',`left:140px;top:140px;width:0;height:0;transform:rotateZ(${ang}deg) translateY(-122px) translateZ(14px) rotateX(-38deg)`,o);
+   extrude(g,{n:8,depth:16,x:-46,y:-10,w:92,h:20,shape:'clip-path:polygon(0 0,100% 0,88% 100%,12% 100%)',bg:darkmetal,glowAt:[7],glow:i<4?'linear-gradient(90deg,#a487ff,#ffffff,#a487ff)':'#2a2d38'});}
+ el('div','face','left:95px;top:95px;width:90px;height:90px;border-radius:50%;border:1.5px dashed rgba(255,170,210,.85);box-shadow:0 0 16px rgba(255,122,182,.6);--hz:62px;transform:translateZ(62px);animation:spinZ 6s linear infinite',o);
+ slotBlock(o,{x:72,y:44,w:136,h:26,z0:40,depth:14});
+ chipAt(o,140,57,36);
+})();
+</script></body></html>

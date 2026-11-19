@@ -1,0 +1,168 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
+<title>VOXM HOLO DECK refined</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Sora:wght@200;300;600&display=swap" rel="stylesheet">
+<style>
+:root{--tech:'Michroma','Arial',sans-serif;--mono:ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}body{margin:0;background:#04050a;color:#eceef6;font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif}
+#boards{display:flex;flex-wrap:wrap;gap:24px;padding:24px}
+.gboard{position:relative;width:390px;height:520px;overflow:hidden;border-radius:28px}
+.tag{position:absolute;left:22px;top:20px;z-index:50}.tag b{display:block;font-family:var(--tech);font-size:13px;letter-spacing:.28em}.tag span{display:block;margin-top:6px;font-size:11.5px;opacity:.6}
+.scene,.obj,.chip3d{position:absolute;transform-style:preserve-3d}
+.L,.face{position:absolute}
+.face{inset:0}
+@keyframes spinZ{to{transform:translateZ(var(--hz)) rotateZ(360deg)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes floatP{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(-120px);opacity:0}}
+@keyframes flick{0%,100%{opacity:.92}48%{opacity:.86}50%{opacity:.6}52%{opacity:.9}}
+@keyframes hover{50%{transform:translateY(-4px)}}
+/* ---------- memory chip (data cartridge) — sized in em ---------- */
+.chip { --notch: polygon(0.5em 0, calc(100% - 1.9em) 0, 100% 1.9em, 100% calc(100% - 2em), calc(100% - 0.55em) calc(100% - 1.45em), calc(100% - 1.05em) calc(100% - 1.45em), calc(100% - 1.05em) 100%, 1.05em 100%, 1.05em calc(100% - 1.45em), 0.55em calc(100% - 1.45em), 0 calc(100% - 2em), 0 0.5em);
+  --chamfer: var(--notch);
+  position: relative; width: 10em; height: 13.86em; }
+.chip-edge { position: absolute; inset: 0; clip-path: var(--notch); transform: translate(0.16em, 0.24em); background: linear-gradient(180deg, color-mix(in srgb, var(--c) 45%, #000), #05060a); opacity: .95; }
+.chip-shell { position: absolute; inset: 0; clip-path: var(--notch); padding: 0.09em;
+  background: linear-gradient(160deg, #ffffff 0%, var(--c) 18%, rgba(255,255,255,.25) 40%, var(--c2) 62%, var(--c) 85%, #fff 100%); }
+.chip-body { position: relative; height: 100%; clip-path: var(--notch); overflow: hidden;
+  background:
+    radial-gradient(90% 55% at 50% 30%, color-mix(in srgb, var(--c) 32%, transparent), transparent 70%),
+    linear-gradient(165deg, color-mix(in srgb, var(--c) 30%, #0b0c16) 0%, #090a13 38%, #070810 70%, color-mix(in srgb, var(--c) 22%, #070810) 100%); }
+.chip-circuit { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; pointer-events: none; }
+.chip-circuit path { fill: none; stroke: var(--c); stroke-width: .35; stroke-linecap: round; }
+.chip-circuit circle { fill: var(--c); }
+.chip-head { position: absolute; left: 0.75em; right: 2.1em; top: 0.5em; height: 1.1em; display: flex; align-items: center; gap: 0.4em; }
+.chip-head .logo { font-family: var(--tech); font-size: 0.5em; letter-spacing: .12em; color: #fff; padding: 0.15em 0.4em; border: 1px solid rgba(255,255,255,.4); border-radius: 0.2em; }
+.chip-head .code { font-family: var(--mono); font-size: 0.48em; color: color-mix(in srgb, var(--c) 70%, #fff); letter-spacing: .06em; }
+.chip-pips { position: absolute; right: 0.55em; top: 2.25em; display: flex; flex-direction: column; gap: 0.18em; }
+.chip-pips i { width: 0.32em; height: 0.32em; transform: rotate(45deg); background: rgba(255,255,255,.18); }
+.chip-pips i.on { background: var(--c); box-shadow: 0 0 0.35em var(--c); }
+.chip-win { position: absolute; left: 0.62em; right: 1.15em; top: 1.95em; height: 6.55em; border-radius: 0.35em; overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, var(--c2), #05060a 80%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent), 0 0 0.8em -0.2em var(--c); }
+.chip-win img, .chip-win .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
+.chip-win .art svg { width: 100%; height: 100%; }
+.chip-win .mono { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--tech); font-size: 3em; color: #fff; text-shadow: 0 0 0.3em var(--c); }
+.chip-win::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), linear-gradient(180deg, transparent 60%, rgba(5,6,10,.75)); }
+.chip-win .hud { position: absolute; width: 0.7em; height: 0.7em; border: 0 solid #fff; opacity: .85; z-index: 2; }
+.chip-win .hud.tl { left: 0.25em; top: 0.25em; border-left-width: 1.5px; border-top-width: 1.5px; }
+.chip-win .hud.br { right: 0.25em; bottom: 0.25em; border-right-width: 1.5px; border-bottom-width: 1.5px; }
+.chip-win .kind { position: absolute; left: 0.45em; bottom: 0.35em; z-index: 2; font-family: var(--tech); font-size: 0.4em; letter-spacing: .2em; color: #e8e6ff; }
+.chip-win .badge { position: absolute; right: 0.35em; top: 0.35em; z-index: 2; font-size: 0.42em; font-weight: 800; padding: 0.2em 0.5em; border-radius: 1em; background: rgba(5,6,10,.75); border: 1px solid rgba(255,255,255,.25); }
+.chip-plate { position: absolute; left: 0.62em; right: 0.62em; top: 8.75em; }
+.chip-plate .nm { display: block; font-size: 0.92em; font-weight: 900; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; text-shadow: 0 0 0.5em color-mix(in srgb, var(--c) 60%, transparent); }
+.chip-plate .prof { display: flex; gap: 0.5em; margin-top: 0.25em; font-family: var(--mono); font-size: 0.46em; color: #aeb3c6; white-space: nowrap; overflow: hidden; }
+.chip-plate .prof b { color: #fff; font-weight: 700; }
+.chip-bar { position: absolute; left: 0.62em; right: 0.62em; top: 10.75em; height: 0.16em; border-radius: 1em; background: linear-gradient(90deg, var(--c), transparent); box-shadow: 0 0 0.4em var(--c); }
+.chip-grip { position: absolute; left: 0.2em; top: 4em; width: 0.22em; height: 2.2em; background: repeating-linear-gradient(180deg, rgba(255,255,255,.35) 0 0.12em, transparent 0.12em 0.32em); }
+.chip-pins { position: absolute; left: 1.25em; right: 1.25em; bottom: 0.12em; height: 1.05em; border-radius: 0.1em;
+  background: repeating-linear-gradient(90deg, #ffe7a3 0 0.34em, #b98a2c 0.34em 0.44em, transparent 0.44em 0.66em); box-shadow: 0 0 0.4em rgba(255,210,120,.3); }
+.chip-sheen { position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: screen; clip-path: var(--notch);
+  background: linear-gradient(112deg, transparent 30%, rgba(255,255,255,.18) 42%, rgba(127,220,255,.16) 47%, rgba(255,122,182,.12) 52%, transparent 62%); background-size: 260% 100%; background-position: var(--sheen, 50%) 0; }
+.chip .dim { position: absolute; inset: 0; background: #05060a; opacity: 0; pointer-events: none; z-index: 4; clip-path: var(--notch); }
+
+
+</style></head><body><div id="boards"></div>
+<script>
+const CHIP = "<div class=\"chip\" style=\"--c:#5fe0a8;--c2:#265a43\">\n    <div class=\"chip-edge\"></div>\n    <div class=\"chip-shell\"><div class=\"chip-body\">\n      <svg class=\"chip-circuit\" viewBox=\"0 0 100 139\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><path d=\"M4 88V100H14V127\"/><path d=\"M24 116H46V127\"/><path d=\"M95 64V114H72V127\"/><path d=\"M56 121V127\"/><path d=\"M4 30V60\"/><path d=\"M84 6H98\"/><circle cx=\"14\" cy=\"100\" r=\"1\"/><circle cx=\"46\" cy=\"116\" r=\"1\"/><circle cx=\"72\" cy=\"114\" r=\"1\"/></svg>\n      <div class=\"chip-head\"><span class=\"logo\">VXM</span><span class=\"code\">VX-04</span></div>\n      <div class=\"chip-pips\"><i class=\"on\"></i><i class=\"on\"></i><i class=\"\"></i></div>\n      <div class=\"chip-grip\"></div>\n      <div class=\"chip-win\"><div class=\"art\"><svg viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid slice\"><defs>\n    <linearGradient id=\"gdh81vb\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"10\" x2=\"0\" y2=\"90\"><stop offset=\"0\" stop-color=\"#b7f1d8\"/><stop offset=\"1\" stop-color=\"#5fe0a8\"/></linearGradient>\n    <filter id=\"gdh81vbf\" x=\"-30%\" y=\"-30%\" width=\"160%\" height=\"160%\"><feGaussianBlur stdDeviation=\"2.2\" result=\"b\"/><feMerge><feMergeNode in=\"b\"/><feMergeNode in=\"SourceGraphic\"/></feMerge></filter>\n    <radialGradient id=\"gdh81vbr\" cx=\".5\" cy=\".42\" r=\".6\"><stop offset=\"0\" stop-color=\"#5fe0a8\" stop-opacity=\".35\"/><stop offset=\"1\" stop-color=\"#05060a\" stop-opacity=\"0\"/></radialGradient></defs>\n    <rect width=\"100\" height=\"100\" fill=\"url(#gdh81vbr)\"/>\n    <g opacity=\".14\" stroke=\"#b7f1d8\" stroke-width=\".4\"><path d=\"M20 0V100M0 20H100\"/><path d=\"M40 0V100M0 40H100\"/><path d=\"M60 0V100M0 60H100\"/><path d=\"M80 0V100M0 80H100\"/></g>\n    <g filter=\"url(#gdh81vbf)\"><path d=\"M50 14c17 0 27 11 27 26 0 18-15 36-27 40-12-4-27-22-27-40 0-15 10-26 27-26z\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"3.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M30 42c6-1 13 3 16 10-7 2-14-2-16-10zM70 42c-6-1-13 3-16 10 7 2 14-2 16-10z\" fill=\"#b7f1d8\"/><path d=\"M45 68h10\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"50\" cy=\"8\" r=\"2\" fill=\"#b7f1d8\"/><path d=\"M14 30c4-3 7-3 10 0M76 30c3-3 6-3 10 0\" fill=\"none\" stroke=\"url(#gdh81vb)\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    </g></svg></div><i class=\"hud tl\"></i><i class=\"hud br\"></i><span class=\"kind\">COSMIC</span></div>\n      <div class=\"chip-plate\"><b class=\"nm\">\u5b87\u5b99\u4eba</b><div class=\"prof\"><span>PITCH <b>+4.0</b></span><span>TONE <b>+3.0</b></span></div></div>\n      <div class=\"chip-bar\"></div>\n      <div class=\"chip-pins\"></div>\n    </div></div>\n    <div class=\"chip-sheen\"></div>\n  </div>";
+const $=(s,e=document)=>e.querySelector(s);
+function el(tag,cls,style,parent,html){const e=document.createElement(tag);if(cls)e.className=cls;if(style)e.setAttribute('style',style);if(html)e.innerHTML=html;if(parent)parent.appendChild(e);return e;}
+function extrude(parent,{n,depth,z0=0,x=0,y=0,w,h,shape,bg,ring={}}){for(let i=0;i<n;i++){const t=i/(n-1);const z=z0+depth*t;el('div','L',`left:${x}px;top:${y}px;width:${w}px;height:${h}px;${shape};transform:translateZ(${z.toFixed(2)}px);background:${ring[i]||bg(t)}`,parent);}}
+const GL='<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="gl2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>';
+
+function holoDeck(o){
+ const T=o.theme;
+ const a=el('div','gboard',`background:${T.bg}`,$('#boards'));
+ el('div','face',`background-image:linear-gradient(${T.grid} 1px,transparent 1px),linear-gradient(90deg,${T.grid} 1px,transparent 1px);background-size:24px 24px;-webkit-mask-image:radial-gradient(70% 45% at 50% 72%,#000,transparent);mask-image:radial-gradient(70% 45% at 50% 72%,#000,transparent)`,a);
+ el('div','tag',`color:${T.ink}`,a,`<b>${o.title}</b><span>${o.sub}</span>`);
+ // floor glow + reflection
+ el('div','face',`left:20px;top:360px;width:350px;height:120px;border-radius:50%;background:radial-gradient(closest-side,${T.floor},transparent);filter:blur(14px)`,a);
+ const sc=el('div','scene','left:25px;top:250px;width:340px;height:200px;perspective:1100px;perspective-origin:50% -60%',a);
+ const ob=el('div','obj','left:0;top:0;width:340px;height:200px;transform:rotateX(64deg) rotateZ(-14deg);animation:none',sc);
+ // deck: a soft rounded-rectangle, thin, with a glowing under-lip (floats)
+ const shape='border-radius:44px';
+ // under-light (below the body, gives a floating look)
+ el('div','L',`left:16px;top:16px;width:308px;height:168px;border-radius:40px;transform:translateZ(-2px);background:${T.under};filter:blur(10px);opacity:.9`,ob);
+ const ring={};ring[3]=T.lip;ring[4]=T.lip;
+ extrude(ob,{n:18,depth:22,w:340,h:200,shape,bg:o.gadget?((t)=>t<0.42?'linear-gradient(90deg,#1c1a26 0%,#3a3848 30%,#6a6680 45%,#2c2a38 70%,#14121c 100%)':T.side(t)):T.side,ring:o.gadget?{7:T.lip,8:T.lip}:ring});
+ // top glass
+ const top=el('div','face',`width:340px;height:200px;${shape};transform:translateZ(22.5px);background:${T.top};box-shadow:inset 0 0 0 1.2px ${T.edge},inset 0 0 0 5px ${T.bezel}`,ob);
+ el('div','face',`inset:10px;border-radius:36px;background:${T.glass};box-shadow:inset 0 0 0 1px ${T.inner}`,top);
+ el('div','face',`inset:10px;border-radius:36px;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,${T.sheen}) 45%,transparent 55%)`,top);
+ // pinstripes near the front edge + engraved label
+ el('div','face',`left:40px;right:40px;top:168px;height:10px;background:repeating-linear-gradient(90deg,${T.stripe} 0 1px,transparent 1px 6px);opacity:.8`,top);
+ el('div','face',`left:36px;top:24px;width:200px;height:12px;font-family:var(--tech);font-size:6.5px;letter-spacing:.42em;color:${T.label}`,top,'VOXM · HOLO DECK');
+ // micro status LEDs
+ if(!o.gadget) el('div','face',`left:36px;top:40px;width:60px;height:4px;display:flex;gap:4px`,top,[1,1,1,0,0].map(v=>`<i style="flex:1;border-radius:2px;background:${v?T.accent:T.ledOff};box-shadow:${v?'0 0 6px '+T.accent:'none'}"></i>`).join(''));
+ // chip bay: recessed slot cut into the glass (rear-left)
+ const bay=o.gadget?el('div','face','display:none',top):el('div','face',`left:34px;top:66px;width:118px;height:16px;border-radius:8px;background:${T.bay};box-shadow:inset 0 2px 4px rgba(0,0,0,.8),0 0 0 1px ${T.edge}`,top);
+ el('div','face',`left:10px;right:10px;top:6px;height:4px;border-radius:2px;background:${T.accent};box-shadow:0 0 10px 2px ${T.accent}`,bay);
+ // emitter: etched rings + lens (front-right)
+ el('div','face',`left:176px;top:44px;width:128px;height:128px`,top,`<svg viewBox="0 0 128 128" width="128" height="128">${GL}
+   <circle cx="64" cy="64" r="60" fill="none" stroke="${T.etch}" stroke-width=".8"/>
+   <circle cx="64" cy="64" r="52" fill="none" stroke="${T.accent2}" stroke-width="1.2" stroke-dasharray="2 4" filter="url(#gl)"/>
+   <circle cx="64" cy="64" r="40" fill="none" stroke="${T.etch}" stroke-width=".8"/>
+   ${Array.from({length:48},(_,i)=>{const a=i/48*Math.PI*2;const r1=44,r2=i%4==0?50:47;return `<line x1="${64+Math.cos(a)*r1}" y1="${64+Math.sin(a)*r1}" x2="${64+Math.cos(a)*r2}" y2="${64+Math.sin(a)*r2}" stroke="${T.accent}" stroke-opacity="${i%4==0?.9:.4}" stroke-width="1"/>`}).join('')}
+   <circle cx="64" cy="64" r="26" fill="${T.lens}"/>
+   <circle cx="64" cy="64" r="16" fill="${T.core}" filter="url(#gl)"/>
+   <circle cx="58" cy="58" r="5" fill="#fff" opacity=".8"/></svg>`);
+ el('div','face',`left:186px;top:54px;width:108px;height:108px;border-radius:50%;border:1px solid ${T.accent2};--hz:26px;transform:translateZ(26px);animation:spinZ 7s linear infinite;border-style:dashed;opacity:.8`,ob);
+ if(o.gadget){
+  // front face plate (vertical) with port, LEDs and model code
+  const fp=el('div','face',`left:44px;top:200px;width:252px;height:22px;transform-origin:50% 0;transform:translateZ(22.4px) rotateX(-90deg);background:linear-gradient(180deg,#f4f2fa 0%,#d8d4e6 38%,#3a3848 40%,#2a2836 100%);display:flex;align-items:center;justify-content:space-between;padding:0 14px`,ob);
+  fp.innerHTML=`<span style="margin-top:12px;font-family:var(--tech);font-size:4.5px;letter-spacing:.3em;color:#b7b3c8">VX-HD1</span><span style="margin-top:12px;display:flex;gap:3px">${[1,1,1,0].map(v=>`<i style="width:9px;height:2px;border-radius:1px;background:${v?'#e6dcff':'#4a4758'};box-shadow:${v?'0 0 4px #c8b4ff':'none'}"></i>`).join('')}</span><span style="margin-top:12px;width:16px;height:5px;border-radius:3px;background:#0b0a12;box-shadow:inset 0 0 0 1px #6f6c82"></span>`;
+  // panel seam lines on the top shell
+  el('div','face',`left:150px;top:10px;width:1px;height:180px;background:linear-gradient(180deg,transparent,rgba(140,130,170,.35) 20%,rgba(140,130,170,.35) 80%,transparent)`,top);
+  // OLED status strip (front-left)
+  const oled=el('div','face',`left:30px;top:104px;width:112px;height:22px;border-radius:11px;background:#06050c;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 0 0 2px rgba(255,255,255,.6);display:flex;align-items:center;justify-content:space-between;padding:0 9px;font-family:var(--mono);font-size:6.5px;color:#e6dcff`,top);
+  oled.innerHTML=`<span style="display:flex;align-items:center;gap:4px"><i style="width:4px;height:4px;border-radius:50%;background:#ff8fc8;box-shadow:0 0 5px #ff8fc8"></i>LIVE</span><span>212Hz</span><span style="display:flex;gap:1.5px;align-items:flex-end;height:8px">${[3,5,8,6,4,7,5,3].map(h=>`<i style="width:1.6px;height:${h}px;background:#d6c8ff"></i>`).join('')}</span>`;
+  // capacitive touch keys
+  const keys=el('div','face',`left:30px;top:138px;width:112px;height:26px;display:flex;gap:7px`,top);
+  const ic=['<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>','<circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/>','<path d="M5 4v16M12 4v16M19 4v16"/>'];
+  keys.innerHTML=ic.map((d,i)=>`<span style="flex:1;border-radius:9px;background:linear-gradient(180deg,#ffffff,#e4e0ee);box-shadow:0 0 0 1px rgba(140,130,170,.35),0 2px 3px rgba(60,50,90,.25),inset 0 1px 0 #fff;display:grid;place-items:center;position:relative;color:${i==1?'#ff6fae':'#8c86a6'}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${d}</svg><i style="position:absolute;bottom:3px;width:8px;height:1.5px;border-radius:1px;background:${i<2?'#c8b4ff':'#d9d5e6'};box-shadow:${i<2?'0 0 4px #c8b4ff':'none'}"></i></span>`).join('');
+  // micro-perforated speaker (rear-right)
+  el('div','face',`left:236px;top:20px;width:76px;height:14px;background:radial-gradient(circle,#8f8aa6 0.9px,transparent 1.2px) 0 0/5px 5px;opacity:.7`,top);
+  // raised rotary bezel around the emitter (knurled pearl ring)
+  const ring='-webkit-mask:radial-gradient(circle,transparent 57px,#000 58px);mask:radial-gradient(circle,transparent 57px,#000 58px);border-radius:50%';
+  for(let i=0;i<6;i++) el('div','L',`left:170px;top:38px;width:140px;height:140px;${ring};transform:translateZ(${23+i*1.2}px);background:${i==5?'repeating-conic-gradient(#ffffff 0 2deg,#d9d5e6 2deg 4deg)':'linear-gradient(90deg,#9a96ae,#ffffff 40%,#c9c5d8 70%,#8a879c)'}`,ob);
+  el('div','L',`left:170px;top:38px;width:140px;height:140px;border-radius:50%;transform:translateZ(29.3px)`,ob,`<svg viewBox="0 0 140 140" width="140" height="140"><circle cx="70" cy="4" r="2.2" fill="#ff6fae"/>${Array.from({length:12},(_,i)=>{const a=i/12*Math.PI*2;return `<line x1="${70+Math.cos(a)*62}" y1="${70+Math.sin(a)*62}" x2="${70+Math.cos(a)*66}" y2="${70+Math.sin(a)*66}" stroke="#6f6c82" stroke-width="1"/>`}).join('')}</svg>`);
+  // chip bay housing with eject key
+  const bayL=34,bayT=58,bayW=118,bayH=30;
+  for(let i=0;i<5;i++) el('div','L',`left:${bayL}px;top:${bayT}px;width:${bayW}px;height:${bayH}px;border-radius:12px;transform:translateZ(${23+i*1.3}px);background:${i==4?'linear-gradient(180deg,#ffffff,#e2deec)':'linear-gradient(90deg,#9a96ae,#ffffff 40%,#c9c5d8)'}`,ob);
+  const bh=el('div','L',`left:${bayL}px;top:${bayT}px;width:${bayW}px;height:${bayH}px;border-radius:12px;transform:translateZ(28.6px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.9)`,ob);
+  el('div','face',`left:8px;right:26px;top:11px;height:8px;border-radius:4px;background:#05040b;box-shadow:inset 0 2px 3px #000,0 1px 0 #fff`,bh);
+  el('div','face',`left:12px;right:30px;top:14px;height:2px;border-radius:1px;background:#e6dcff;box-shadow:0 0 8px 2px #c8b4ff`,bh);
+  el('div','face',`left:auto;right:7px;top:8px;width:14px;height:14px;border-radius:5px;background:linear-gradient(180deg,#fff,#d9d5e6);box-shadow:0 0 0 1px rgba(140,130,170,.4)`,bh,'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8c86a6" stroke-width="2"><path d="M12 7l5 6H7z"/><path d="M7 17h10"/></svg>');
+ }
+ // ---- hologram (stands up from the emitter) ----
+ const ex=176+64, ey=44+64; // emitter centre on the deck
+ const H=el('div','chip3d',`left:${ex-110}px;top:${ey-240}px;width:220px;height:240px;transform-origin:50% 100%;transform:translateZ(23px) rotateZ(14deg) rotateX(-90deg)`,ob);
+ // light cone
+ el('div','face',`background:linear-gradient(0deg,${T.beam} 0%,transparent 75%);clip-path:polygon(44% 100%,56% 100%,96% 6%,4% 6%);filter:blur(1px)`,H);
+ el('div','face',`background:repeating-linear-gradient(90deg,transparent 0 9px,${T.ray} 9px 10px);clip-path:polygon(46% 100%,54% 100%,90% 10%,10% 10%);-webkit-mask-image:linear-gradient(0deg,#000,transparent 80%);mask-image:linear-gradient(0deg,#000,transparent 80%)`,H);
+ // particles
+ for(let i=0;i<14;i++){const x=70+((i*37)%80),d=(i*0.37)%3;el('i','',`position:absolute;left:${x}px;top:${150+(i*13)%60}px;width:2px;height:2px;border-radius:50%;background:${T.particle};box-shadow:0 0 6px ${T.particle};animation:floatP ${3+d}s linear ${d}s infinite`,H);}
+ // circular spectrum (two layers for a soft chromatic offset)
+ const spec=(col,op,dx)=>`<svg viewBox="0 0 160 160" width="160" height="160" style="position:absolute;left:${30+dx}px;top:8px;opacity:${op}">${GL}${Array.from({length:72},(_,i)=>{const a=i/72*Math.PI*2-Math.PI/2;const v=0.35+0.65*Math.abs(Math.sin(i*0.55)*Math.cos(i*0.21));const r1=52,r2=52+v*22;return `<line x1="${(80+Math.cos(a)*r1).toFixed(1)}" y1="${(80+Math.sin(a)*r1).toFixed(1)}" x2="${(80+Math.cos(a)*r2).toFixed(1)}" y2="${(80+Math.sin(a)*r2).toFixed(1)}" stroke="${col}" stroke-width="1.5" stroke-linecap="round"/>`}).join('')}<circle cx="80" cy="80" r="44" fill="none" stroke="${col}" stroke-width=".8" stroke-opacity=".7"/></svg>`;
+ el('div','face',`animation:flick 4s infinite`,H,spec(T.holoB,.45,3)+spec(T.holoA,1,0)+`
+   <div style="position:absolute;left:30px;top:8px;width:160px;height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center">
+     <span style="font-family:var(--tech);font-size:5px;letter-spacing:.3em;color:${T.holoA};opacity:.85">VX-04 · COSMIC</span>
+     <span style="font-family:'Sora',sans-serif;font-weight:300;font-size:18px;letter-spacing:.12em;color:#fff;text-shadow:0 0 10px ${T.holoA},0 0 22px ${T.holoA}">宇宙人</span>
+     <span style="font-family:var(--mono);font-size:8px;color:${T.holoA};opacity:.9">212 Hz  ·  ♪ G#3</span>
+   </div>
+   <div style="position:absolute;left:30px;top:8px;width:160px;height:160px;border-radius:50%;background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px);-webkit-mask-image:radial-gradient(circle,#000 55%,transparent 72%);mask-image:radial-gradient(circle,#000 55%,transparent 72%)"></div>`);
+ // chip seated in the bay
+ const C=el('div','chip3d',`left:${34+50-60}px;top:${(o.gadget?73:74)-166}px;width:120px;height:166px;transform-origin:50% 100%;transform:translateZ(${o.gadget?14:6}px) rotateZ(14deg) rotateX(-90deg) scale(.86);font-size:12px`,ob,CHIP);
+ return a;
+}
+const OBSIDIAN={bg:'radial-gradient(120% 70% at 50% 100%,rgba(70,140,255,.18),transparent 60%),radial-gradient(90% 60% at 70% 20%,rgba(123,92,255,.12),transparent 70%),#05060b',grid:'rgba(127,220,255,.05)',ink:'#eef3ff',floor:'rgba(90,180,255,.45)',under:'linear-gradient(90deg,#7fdcff,#a487ff)',
+ side:(t)=>`linear-gradient(90deg,#030407 0%,#1b1e28 18%,#4a5060 34%,#1f222c 52%,#0b0c11 76%,#030407 100%)`,lip:'linear-gradient(90deg,#0b2a3a,#9ff0ff 35%,#c8b4ff 65%,#1a1040)',
+ top:'linear-gradient(180deg,#2a2e3c,#0d0e15)',edge:'rgba(255,255,255,.35)',bezel:'rgba(0,0,0,.55)',glass:'radial-gradient(70% 90% at 70% 50%,rgba(127,220,255,.10),transparent 60%),linear-gradient(180deg,#0e1018,#050609)',inner:'rgba(127,220,255,.12)',sheen:.07,
+ stripe:'rgba(127,220,255,.25)',label:'rgba(170,190,220,.45)',accent:'#7fdcff',accent2:'#a487ff',ledOff:'rgba(255,255,255,.12)',bay:'#000',etch:'rgba(170,200,255,.25)',lens:'radial-gradient(circle,#0a1a26,#000)',core:'#bff4ff',
+ beam:'rgba(127,220,255,.42)',ray:'rgba(127,220,255,.10)',particle:'#bff4ff',holoA:'#8ff0ff',holoB:'#ff7ad9'};
+OBSIDIAN.lens='#071019';
+const PEARL={bg:'radial-gradient(120% 70% at 50% 100%,rgba(190,160,255,.30),transparent 60%),linear-gradient(180deg,#1a1830,#0b0a16)',grid:'rgba(220,210,255,.06)',ink:'#fbf8ff',floor:'rgba(200,170,255,.55)',under:'linear-gradient(90deg,#ffb6e6,#b9a5ff)',
+ side:(t)=>`linear-gradient(90deg,#8d8aa0 0%,#d9d6e6 18%,#ffffff 36%,#c9c5d8 56%,#9a97ad 80%,#6f6c82 100%)`,lip:'linear-gradient(90deg,#c8b4ff,#ffffff 40%,#ffc6ef 70%,#b9a5ff)',
+ top:'linear-gradient(180deg,#ffffff,#d9d5e6)',edge:'rgba(255,255,255,.9)',bezel:'rgba(140,130,170,.35)',glass:'radial-gradient(70% 90% at 70% 50%,rgba(185,165,255,.25),transparent 60%),linear-gradient(180deg,#1c1a2c,#0c0b16)',inner:'rgba(255,255,255,.18)',sheen:.10,
+ stripe:'rgba(200,180,255,.35)',label:'rgba(220,210,255,.55)',accent:'#d6c8ff',accent2:'#ffb6e6',ledOff:'rgba(255,255,255,.14)',bay:'#05040b',etch:'rgba(220,200,255,.3)',lens:'#120e22',core:'#f3ecff',
+ beam:'rgba(214,200,255,.45)',ray:'rgba(255,200,240,.10)',particle:'#fff2fb',holoA:'#e6dcff',holoB:'#ffb6e6'};
+holoDeck({title:'HOLO DECK — PEARL',sub:'前回のパールホワイト版',theme:PEARL});
+holoDeck({title:'HOLO DECK — PEARL GADGET',sub:'操作キー・表示窓・回転ベゼル付きの近未来ガジェット',theme:PEARL,gadget:true});
+</script></body></html>

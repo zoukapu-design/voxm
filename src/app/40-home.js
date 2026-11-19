@@ -1,7 +1,8 @@
-/* ===== HOME: memory wheel → driver ===== */
-const W = { pos: 0, list: [], cards: [], drag: null, dragCard: null, dragY: 0, scale: 1, anim: 0, inserting: false, lastCenter: -1 };
-const STEP = 118;
-let SLOT_FINAL = 216, SLOT_LINE = 327;
+/* ===== HOME: memory wheel → HOLO DECK ===== */
+const W = { pos: 0, list: [], cards: [], drag: null, dragCard: null, dragY: 0, scale: 1, anim: 0, inserting: false, lastCenter: -1, lv: 0 };
+const STEP = 104;
+// deck geometry (deck-local px; the deck plane is rotateX(62deg) rotateZ(-18deg))
+const DK = { W: 330, H: 180, R: 90, plateZ: 52.5, slitX: 106, slitY: 20, ex: 250, ey: 86, chipScale: 0.9, chipSink: 40, chipLift: 150 };
 
 function stageHTML() {
   return `<div class="stage-host" id="stageHost"><div class="stage" id="stage">
@@ -9,81 +10,96 @@ function stageHTML() {
       <button class="case-pill" id="casePill"><i class="sw"></i><span id="caseName"></span><span class="cnt" id="caseCnt"></span>${ICON.down}</button>
       <div class="wheel-index" id="wIdx"></div>
     </div>
-    <div class="wheel" id="wheel" aria-label="ボイスメモリ。左右にスワイプで選択、下にドラッグかタップでドライバーへ挿入"></div>
-    <div class="slot-beam"></div>
+    <div class="wheel" id="wheel" aria-label="ボイスメモリ。左右にスワイプで選択、下にドラッグかタップでデッキに差し込む"></div>
     <div class="insert-guide" aria-hidden="true"><i></i><i></i><i></i></div>
-    <div class="slot-clip" id="slotClip"></div>
-    <div class="driver" id="driver">
-      <div class="drv-floor"></div>
-      <div class="light-gate"></div>
-      <svg class="drv-svg" viewBox="0 0 344 250" aria-hidden="true">
-        <defs>
-          <linearGradient id="dgBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232638"/><stop offset=".45" stop-color="#11131e"/><stop offset="1" stop-color="#0a0b12"/></linearGradient>
-          <linearGradient id="dgSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2d40"/><stop offset="1" stop-color="#07070c"/></linearGradient>
-          <linearGradient id="dgEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".9"/><stop offset=".35" stop-color="#a487ff" stop-opacity=".7"/><stop offset=".7" stop-color="#7fdcff" stop-opacity=".55"/><stop offset="1" stop-color="#a487ff" stop-opacity=".3"/></linearGradient>
-          <linearGradient id="dgLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7fdcff"/><stop offset=".5" stop-color="#b69cff"/><stop offset="1" stop-color="#ff7ab6"/></linearGradient>
-          <linearGradient id="dgSheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".3" stop-color="#fff" stop-opacity="0"/></linearGradient>
-          <pattern id="dgHex" width="10" height="17.32" patternUnits="userSpaceOnUse" patternTransform="scale(.9)"><path d="M5 0L10 2.9V8.7L5 11.5L0 8.7V2.9Z M5 11.5V17.32" fill="none" stroke="#a487ff" stroke-opacity=".07" stroke-width=".6"/></pattern>
-          <clipPath id="dgClip"><path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z"/></clipPath>
-          <filter id="dgGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        </defs>
-        <path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" transform="translate(0 12)" fill="url(#dgSide)"/>
-        <path d="M0 160L46 226H298L344 160" transform="translate(0 12)" fill="none" stroke="#a487ff" stroke-opacity=".25"/>
-        <path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" fill="url(#dgBody)"/>
-        <g clip-path="url(#dgClip)">
-          <rect width="344" height="250" fill="url(#dgHex)"/>
-          <rect width="344" height="90" fill="url(#dgSheen)"/>
-          <rect class="scan" x="0" y="0" width="344" height="18" fill="url(#dgLine)" opacity=".5" style="mix-blend-mode:screen;filter:blur(8px)"/>
-          <circle cx="172" cy="110" r="78" fill="none" stroke="#a487ff" stroke-opacity=".08"/>
-          <circle cx="172" cy="110" r="96" fill="none" stroke="#7fdcff" stroke-opacity=".05"/>
-        </g>
-        <path d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" fill="none" stroke="url(#dgEdge)" stroke-width="1.2"/>
-        <path class="contour" d="M24 18H76L90 4H254L268 18H320L344 42V160L298 226H46L0 160V42Z" transform="translate(13.5 9) scale(.92)" fill="none" stroke="url(#dgLine)" stroke-width=".9" stroke-dasharray="60 6 2 6" filter="url(#dgGlow)"/>
-        <path class="wing" d="M8 150L48 208M336 150L296 208" stroke="url(#dgLine)" stroke-width="2.4" stroke-linecap="round" filter="url(#dgGlow)"/>
-        <path class="wing" d="M10 54V128M334 54V128" stroke="#a487ff" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 5"/>
-        <path d="M96 30H122M222 30H248" stroke="#a487ff" stroke-opacity=".4"/>
-      </svg>
-      <div class="drv-slot"></div>
-      <div class="holo-name" id="scrName">メモリを挿入</div>
-      <div class="dhud dhud-l">
-        <span class="k">STATUS</span><span class="v st" id="scrSt">NO MEMORY</span>
-        <span class="k">TYPE</span><span class="v" id="scrL">—</span>
-        <span class="k">INPUT</span><div class="scr-vu" id="scrVu">${'<i></i>'.repeat(12)}</div>
-      </div>
-      <div class="dhud dhud-r">
-        <span class="k">VOICE</span><span class="v" id="scrR">—</span>
-        <span class="k">TONE</span><span class="v" id="scrT">—</span>
-        <span class="k">VOLUME</span>
-      </div>
-      <div class="vol-track"><i id="volLed"></i></div>
-      <div class="knob-hit" id="knobHit" aria-label="音量（左右にドラッグ）"></div>
-      <div class="core">
-        <svg class="core-ring" id="ledRing" viewBox="0 0 128 128" aria-hidden="true">
-          <circle cx="64" cy="64" r="63" fill="none" stroke="#a487ff" stroke-opacity=".12"/>
-          <g class="spin"><circle cx="64" cy="64" r="49" fill="none" stroke="#7fdcff" stroke-opacity=".55" stroke-width="1" stroke-dasharray="18 10 3 10"/></g>
-          <g class="spin2"><circle cx="64" cy="64" r="45" fill="none" stroke="#b69cff" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="40 30"/></g>
-          ${Array.from({ length: 40 }, (_, i) => { const a = (-240 + i * (300 / 39)) * Math.PI / 180; const c = Math.cos(a), s2 = Math.sin(a); return `<line class="tick" x1="${(64 + c * 54).toFixed(1)}" y1="${(64 + s2 * 54).toFixed(1)}" x2="${(64 + c * 60).toFixed(1)}" y2="${(64 + s2 * 60).toFixed(1)}"/>`; }).join('')}
-        </svg>
-        <button class="ring-btn" id="ringBtn" aria-label="変換のON/OFF"><canvas id="scrWave"></canvas><span class="pw">${ICON.power}</span></button>
-        <div class="ring-lbl" id="ringLbl">CONVERT</div>
-      </div>
-      <div class="drv-keys">
-        <button class="key" id="kMon" style="left:34px" aria-label="モニター（自分の耳で聴く）">${ICON.headphones}</button>
-        <button class="key rec" id="kRec" style="left:80px;top:10px" aria-label="録音">${ICON.rec}</button>
-        <button class="key" id="kFx" style="left:226px;top:10px" aria-label="FX工房">${ICON.sliders}</button>
-        <button class="key" id="kOut" style="left:272px" aria-label="出力先">${ICON.link}</button>
-      </div>
-      <div class="drv-logo">VOXM CORE</div><i class="drv-pwrled"></i>
+    <div class="deck-floor"></div>
+    <div class="deck-scene"><div class="deck-obj deck" id="deck"></div></div>
+    <button class="hit" id="hitCore" aria-label="変換のON/OFF（コアをタップ）"></button>
+    <div class="hit" id="hitVol" role="slider" aria-label="出力音量（左右にドラッグ）" tabindex="0"></div>
+    <button class="hit" id="hitChip" aria-label="差し込んだメモリを取り出す"></button>
+    <div class="ctrl">
+      <button class="cbtn main" id="kConv"><i class="dot"></i><b id="kConvTxt">変換 ON</b></button>
+      <button class="cbtn" id="kMon" aria-label="モニター">${ICON.headphones}<span>MON</span></button>
+      <button class="cbtn rec" id="kRec" aria-label="録音">${ICON.rec}<span>REC</span></button>
+      <button class="cbtn" id="kFx" aria-label="FX工房">${ICON.sliders}<span>FX</span></button>
     </div>
-    <div class="status-strip" id="statusStrip"></div>
   </div></div>`;
 }
+
+/* ---- 3D deck construction ---- */
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)); const A = h(a), B = h(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+function dEl(cls, style, parent, html) { const e = document.createElement('div'); e.className = cls; e.setAttribute('style', style); if (html) e.innerHTML = html; parent.appendChild(e); return e; }
+function slab(p, { x = 0, y = 0, w, h, r, z0, depth, n, inset, bg, cls = 'L' }) {
+  for (let i = 0; i < n; i++) { const t = n === 1 ? 1 : i / (n - 1); const k = inset(t);
+    dEl(cls, `left:${x + k}px;top:${y + k}px;width:${w - 2 * k}px;height:${h - 2 * k}px;border-radius:${Math.max(4, r - k)}px;transform:translateZ(${(z0 + depth * t).toFixed(2)}px);background:${bg(t)}`, p); }
+}
+function ring3d(p, { cx, cy, R, thick, z0, depth, n, bg }) {
+  const m = `-webkit-mask:radial-gradient(circle,transparent ${R - thick}px,#000 ${R - thick + 0.6}px);mask:radial-gradient(circle,transparent ${R - thick}px,#000 ${R - thick + 0.6}px)`;
+  for (let i = 0; i < n; i++) { const t = n === 1 ? 1 : i / (n - 1);
+    dEl('L', `left:${cx - R}px;top:${cy - R}px;width:${2 * R}px;height:${2 * R}px;border-radius:50%;${m};transform:translateZ(${(z0 + depth * t).toFixed(2)}px);background:${bg(t)}`, p); }
+}
+const DK_ICONS = [
+  ['mon', '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M3 14h4v6H3zM17 14h4v6h-4z"/>'],
+  ['rec', '<circle cx="12" cy="12" r="5"/>'],
+  ['fx', '<path d="M5 4v16M12 4v16M19 4v16"/>'],
+  ['out', '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>'],
+];
+function buildDeck() {
+  const o = $('#deck'); o.innerHTML = '';
+  const { W: w, H: h, R, ex, ey } = DK;
+  // graphite pedestal
+  slab(o, { w, h, r: R, z0: 0, depth: 12, n: 12, inset: (t) => 22 - t * 4, bg: (t) => `linear-gradient(90deg,#0d0c13,${mixHex('#2a2836', '#3c3a4c', t)} 30%,${mixHex('#4c4a5e', '#6a6680', t)} 46%,#242230 70%,#0b0a10)` });
+  dEl('L', `left:18px;top:18px;width:${w - 36}px;height:${h - 36}px;border-radius:${R - 18}px;transform:translateZ(12.5px);background:radial-gradient(closest-side,#2a2442,#0d0b16);box-shadow:inset 0 0 0 1.5px #d6c8ff,0 0 18px 3px rgba(200,180,255,.6)`, o);
+  // light rims in the levitation gap (space between stays dark)
+  dEl('L', `left:40px;top:40px;width:${w - 80}px;height:${h - 80}px;border-radius:${R - 40}px;transform:translateZ(13px);background:radial-gradient(closest-side,rgba(205,185,255,.55),rgba(140,120,255,.12) 60%,transparent);filter:blur(4px)`, o);
+  for (let i = 0; i < 12; i++) dEl('L gaprim', `left:24px;top:24px;width:${w - 48}px;height:${h - 48}px;border-radius:${R - 24}px;transform:translateZ(${14 + i * 2.3}px);border:1px solid rgba(214,198,255,${(0.55 - i * 0.035).toFixed(3)});box-shadow:0 0 ${6 + i}px rgba(190,170,255,${(0.35 - i * 0.025).toFixed(3)})`, o);
+  // floating pearl-glass plate
+  slab(o, { w, h, r: R, z0: 42, depth: 10, n: 12, inset: (t) => 3 * (1 - t), bg: (t) => `linear-gradient(90deg,rgba(150,140,190,.55),rgba(235,230,250,${(0.55 + t * 0.3).toFixed(2)}) 34%,rgba(255,255,255,${(0.6 + t * 0.3).toFixed(2)}) 46%,rgba(200,192,225,.55) 70%,rgba(120,110,160,.5))` });
+  dEl('L', `left:0;top:0;width:${w}px;height:${h}px;border-radius:${R}px;transform:translateZ(42px);box-shadow:0 0 0 1px rgba(214,200,255,.9),0 0 16px 2px rgba(200,180,255,.55)`, o);
+  const top = dEl('L', `left:0;top:0;width:${w}px;height:${h}px;border-radius:${R}px;transform:translateZ(${DK.plateZ}px);background:radial-gradient(110% 90% at 25% 0%,rgba(255,255,255,.94) 0%,rgba(246,243,252,.82) 40%,rgba(225,220,240,.78) 100%);box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.95),inset 0 0 0 3px rgba(200,180,255,.35),inset 0 -8px 18px rgba(150,130,210,.25)`, o);
+  // chip slit
+  dEl('face dk-slit', `left:${DK.slitX - 62}px;top:${DK.slitY - 4}px;width:124px;height:8px;border-radius:4px;background:#0b0915;box-shadow:inset 0 2px 3px #000,0 0 0 1px rgba(200,180,255,.7),0 0 12px rgba(200,180,255,.8)`, top);
+  // light UI printed on the plate
+  top.insertAdjacentHTML('beforeend', `<div class="dk-ui">
+    <div class="dk-status" id="dkStatus">VOICE CORE · STANDBY</div>
+    <div class="dk-name" id="dkName">メモリを挿入</div>
+    <div class="dk-info" id="dkInfo">—</div>
+    <div class="dk-vol" id="dkVol"><i id="dkVolFill"></i><b id="dkVolKnob"></b></div>
+    <div class="dk-icons">${DK_ICONS.map(([k, d]) => `<svg viewBox="0 0 24 24" class="${k}" data-ic="${k}">${d}</svg>`).join('')}</div>
+  </div>`);
+  // emitter: a raised collar grown out of the plate, with a recessed lens
+  dEl('face', `left:${ex - 60}px;top:${ey - 60}px;width:120px;height:120px;border-radius:50%;background:radial-gradient(closest-side,transparent 72%,rgba(70,55,120,.35) 80%,transparent 100%)`, top);
+  ring3d(o, { cx: ex, cy: ey, R: 48, thick: 13, z0: 52.5, depth: 9, n: 12, bg: (t) => `linear-gradient(90deg,${mixHex('#8d88a6', '#c9c4da', t)},#ffffff 42%,${mixHex('#d6d1e4', '#f4f1fa', t)} 60%,${mixHex('#7a7592', '#b2adc6', t)})` });
+  ring3d(o, { cx: ex, cy: ey, R: 48, thick: 13, z0: 61.8, depth: 0, n: 1, bg: () => 'repeating-conic-gradient(#ffffff 0 1.5deg,#e4dfef 1.5deg 3deg)' });
+  dEl('L', `left:${ex - 48}px;top:${ey - 48}px;width:96px;height:96px;border-radius:50%;transform:translateZ(62px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.95),0 0 0 .6px rgba(150,140,190,.6)`, o);
+  ring3d(o, { cx: ex, cy: ey, R: 36, thick: 2, z0: 55, depth: 6.5, n: 6, bg: () => 'linear-gradient(180deg,#2a2240,#0d0a18)' });
+  dEl('L dk-lens', `left:${ex - 35}px;top:${ey - 35}px;width:70px;height:70px;border-radius:50%;transform:translateZ(55.5px);background:radial-gradient(circle,#ffffff 0%,#efe8ff 14%,#a68dff 36%,#3a2c66 62%,#120e22 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),inset 0 4px 10px rgba(0,0,0,.6),0 0 22px rgba(185,165,255,.8)`, o).id = 'dkLens';
+  dEl('L', `left:${ex - 60}px;top:${ey - 60}px;width:120px;height:120px;border-radius:50%;transform:translateZ(62.3px);background:radial-gradient(closest-side,rgba(200,180,255,0) 56%,rgba(205,185,255,.30) 62%,transparent 74%)`, o);
+  // hologram plane (stands on the lens, turned to face the viewer)
+  const V = dEl('p3 holo', `left:${ex - 110}px;top:${ey - 230}px;width:220px;height:230px;transform-origin:50% 100%;transform:translateZ(56px) rotateZ(18deg) rotateX(-90deg)`, o);
+  const rise = dEl('holo-rise', '', V);
+  rise.innerHTML = `<svg viewBox="0 0 220 230" width="220" height="230" style="position:absolute;inset:0"><defs><linearGradient id="dkcn" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f1ebff" stop-opacity=".8"/><stop offset=".6" stop-color="#d6c8ff" stop-opacity=".26"/><stop offset="1" stop-color="#d6c8ff" stop-opacity="0"/></linearGradient><filter id="dkbb"><feGaussianBlur stdDeviation="2.6"/></filter></defs>
+      <polygon points="82,230 138,230 182,96 38,96" fill="url(#dkcn)" filter="url(#dkbb)"/><polygon points="100,230 120,230 146,110 74,110" fill="url(#dkcn)" opacity=".8" filter="url(#dkbb)"/>
+      ${[-3, -1, 1, 3].map((k) => `<line x1="${110 + k * 3}" y1="228" x2="${110 + k * 22}" y2="104" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/>`).join('')}
+      <ellipse cx="110" cy="228" rx="28" ry="4" fill="#fff" opacity=".75" filter="url(#dkbb)"/></svg>
+    ${Array.from({ length: 10 }, (_, i) => `<i class="pt" style="left:${86 + ((i * 23) % 48)}px;top:${170 + ((i * 13) % 50)}px;animation-duration:${(2.6 + ((i * 0.41) % 3)).toFixed(2)}s;animation-delay:${((i * 0.41) % 3).toFixed(2)}s"></i>`).join('')}
+    <canvas id="holoCv" width="320" height="320"></canvas>
+    <div class="holo-scan"></div>
+    <div class="holo-text"><span class="c" id="hoCode">VX-00</span><span class="n" id="hoName"></span><span class="i" id="hoInfo"></span></div>`;
+  // chip link light + the chip itself: both parallel to the slit (deck x-axis), standing upright
+  const link = dEl('p3 chip-link', `left:${DK.slitX - 56}px;top:${DK.slitY - 40}px;width:112px;height:40px;transform-origin:50% 100%;transform:translateZ(${DK.plateZ + 0.5}px) rotateX(-90deg)`, o);
+  link.innerHTML = `<svg viewBox="0 0 112 40" width="112" height="40"><defs><linearGradient id="dklb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#efe8ff" stop-opacity=".9"/><stop offset="1" stop-color="#c8b4ff" stop-opacity="0"/></linearGradient></defs><rect x="0" y="0" width="112" height="40" fill="url(#dklb)" opacity=".35"/></svg>`;
+  dEl('p3 chip3d', `left:${DK.slitX - 60}px;top:${DK.slitY - 166}px;width:120px;height:166px;transform-origin:50% 100%;transform:${chipTransform(DK.chipLift)}`, o).id = 'chip3d';
+}
+// The chip stands in the slit plane; z is how high its bottom edge sits above the plate (negative = inside the slit).
+function chipTransform(lift) { return `translateZ(${(DK.plateZ - DK.chipSink + lift).toFixed(1)}px) rotateX(-90deg) scale(${DK.chipScale})`; }
 
 RENDER.home = () => {
   const page = $('#page-home');
   if (!page.dataset.built) {
     page.innerHTML = stageHTML();
     page.dataset.built = '1';
+    buildDeck();
     bindHome();
   }
   rebuildWheel();
@@ -95,24 +111,31 @@ function fitStage() {
   const host = $('#stageHost'), stage = $('#stage');
   if (!host || !stage || !host.clientWidth) return;
   const w = host.clientWidth, h = host.clientHeight;
-  const s = Math.min(w / 390, h / 612, 1.3);
+  const s = Math.min(w / 390, h / 640, 1.3);
   W.scale = s;
   stage.style.setProperty('--s', s.toFixed(4));
-  stage.style.top = Math.max(0, (h - 612 * s) / 2) + 'px';
-  measureSlot();
-  sizeCanvas();
+  stage.style.top = Math.max(0, (h - 640 * s) / 2) + 'px';
+  sizeHolo();
+  requestAnimationFrame(placeHits);
 }
-
-function measureSlot() {
-  const slot = $('.drv-slot'), stage = $('#stage');
-  if (!slot || !stage || !W.scale) return;
-  const sr = slot.getBoundingClientRect(), st = stage.getBoundingClientRect();
-  if (!sr.height) return;
-  SLOT_LINE = Math.round((sr.top + sr.height * 0.5 - st.top) / W.scale);
-  SLOT_FINAL = SLOT_LINE - 62 - 44; // 62px of the cartridge stays visible above the slot
-  $('#slotClip').style.height = SLOT_LINE + 'px';
-  const cur = $('#slotClip .slot-chip');
-  if (cur && !W.inserting) cur.style.transform = `translateY(${SLOT_FINAL}px)`;
+// lay transparent 2D buttons over parts of the 3D deck (stage coordinates)
+function placeHits() {
+  const stage = $('#stage'); if (!stage || !W.scale) return;
+  const sr = stage.getBoundingClientRect();
+  const put = (id, el, pad = 0, show = true) => {
+    const hit = $('#' + id); if (!hit) return;
+    if (!el || !show) { hit.style.display = 'none'; return; }
+    const r = el.getBoundingClientRect();
+    if (!r.width) { hit.style.display = 'none'; return; }
+    hit.style.display = '';
+    hit.style.left = ((r.left - sr.left) / W.scale - pad) + 'px';
+    hit.style.top = ((r.top - sr.top) / W.scale - pad) + 'px';
+    hit.style.width = (r.width / W.scale + pad * 2) + 'px';
+    hit.style.height = (r.height / W.scale + pad * 2) + 'px';
+  };
+  put('hitCore', $('#dkLens'), 16);
+  put('hitVol', $('#dkVol'), 14);
+  put('hitChip', $('#chip3d .chip'), 0, !!S.insertedId && !W.inserting);
 }
 
 /* ---- wheel ---- */
@@ -145,7 +168,7 @@ function layoutWheel() {
   W.cards.forEach((el, i) => {
     const d = n >= 4 ? wrapD(i - W.pos, n) : i - W.pos;
     const a = Math.abs(d), sg = Math.sign(d);
-    const x = sg * (a <= 1 ? a * STEP : STEP + (a - 1) * 56);
+    const x = sg * (a <= 1 ? a * STEP : STEP + (a - 1) * 48);
     const z = -Math.min(a, 3) * 80;
     const ry = -clamp(d, -2, 2) * 28;
     const sc = 1 - Math.min(a, 2) * 0.08;
@@ -222,7 +245,7 @@ function bindHome() {
       if (Math.hypot(dx, dy) < 7) return;
       const isCenter = D.card && D.card.classList.contains('center') && !D.card.classList.contains('ghost');
       D.axis = dy > 0 && Math.abs(dy) > Math.abs(dx) * 1.1 && isCenter ? 'v' : 'h';
-      if (D.axis === 'v') { W.dragCard = D.card; D.card.classList.add('dragging'); $('#driver').classList.add('armed'); }
+      if (D.axis === 'v') { W.dragCard = D.card; D.card.classList.add('dragging'); $('#deck').classList.add('armed'); }
     }
     if (D.axis === 'h') {
       W.pos = D.pos0 - dx / STEP;
@@ -254,7 +277,7 @@ function bindHome() {
       const proj = W.pos - (D.vx * 220) / STEP;
       animateTo(Math.round(proj));
     } else {
-      $('#driver').classList.remove('armed');
+      $('#deck').classList.remove('armed');
       if (W.dragY > 78 || (D.vy > 0.55 && W.dragY > 24)) insertCurrent(W.dragY);
       else springBackCard();
     }
@@ -262,24 +285,23 @@ function bindHome() {
   wheel.addEventListener('pointerup', end);
   wheel.addEventListener('pointercancel', end);
 
-  $('#ringBtn').addEventListener('click', toggleConvert);
+  $('#kConv').addEventListener('click', toggleConvert);
+  $('#hitCore').addEventListener('click', toggleConvert);
   $('#kMon').addEventListener('click', () => {
     S.monitor = !S.monitor; VoxEngine.setMonitor(S.monitor); saveSettings(); updateDriver();
     toast(S.monitor ? 'モニターON：変換後の声を自分で聴けます（イヤホン推奨）' : 'モニターOFF：録音・出力のみ');
   });
   $('#kRec').addEventListener('click', toggleRec);
   $('#kFx').addEventListener('click', () => go('fx'));
-  $('#kOut').addEventListener('click', () => go('output'));
   $('#casePill').addEventListener('click', openCasePicker);
-  $('#slotClip').addEventListener('click', (e) => { if (e.target.closest('.slot-chip') && !W.inserting) ejectChip(false); });
-
-  // volume knob
-  const kh = $('#knobHit');
+  $('#hitChip').addEventListener('click', () => { if (!W.inserting && S.insertedId) ejectChip(false); });
+  // volume: drag along the light slider printed on the plate
+  const kh = $('#hitVol');
   let kd = null;
   kh.addEventListener('pointerdown', (e) => { kd = { x: e.clientX, v: S.volume }; try { kh.setPointerCapture(e.pointerId); } catch (err) {} });
   kh.addEventListener('pointermove', (e) => {
     if (!kd) return;
-    S.volume = clamp(kd.v + ((e.clientX - kd.x) / (W.scale * 64)) * 1.5, 0, 1.5);
+    S.volume = clamp(kd.v + ((e.clientX - kd.x) / (W.scale * 110)) * 1.5, 0, 1.5);
     VoxEngine.setVolume(S.volume); updateVol(true);
   });
   const kend = () => { if (kd) { kd = null; saveSettings(); } };
@@ -291,91 +313,136 @@ function bindHome() {
   requestAnimationFrame(screenLoop);
 }
 
-/* ---- slot chip (the cartridge physically in the driver) ---- */
-function makeSlotChip(chip, y) {
-  const el = document.createElement('div');
-  el.className = 'slot-chip';
-  el.dataset.id = chip.id;
-  el.innerHTML = chipHTML(chip);
-  el.style.transform = `translateY(${y}px)`;
-  el.setAttribute('aria-label', chip.name + '（タップで取り出す）');
-  $('#slotClip').append(el);
-  return el;
+/* ---- chip insertion: fly from the wheel, then slide straight down into the slit ---- */
+function setChip3d(chip) {
+  const c3 = $('#chip3d');
+  c3.innerHTML = chip ? chipHTML(chip) : '';
+  c3.dataset.id = chip ? chip.id : '';
 }
 function syncSlotChip() {
-  const clip = $('#slotClip');
-  const cur = clip.querySelector('.slot-chip');
   if (W.inserting) return;
   const chip = chipById(S.insertedId);
-  if (!chip) { if (cur) cur.remove(); return; }
-  if (cur && cur.dataset.id === chip.id) { cur.innerHTML = chipHTML(chip); return; }
-  if (cur) cur.remove();
-  makeSlotChip(chip, SLOT_FINAL);
+  const c3 = $('#chip3d'); if (!c3) return;
+  if (!chip) { setChip3d(null); c3.classList.remove('on'); }
+  else {
+    if (c3.dataset.id !== chip.id || !c3.innerHTML) setChip3d(chip);
+    else c3.innerHTML = chipHTML(chip);
+    c3.style.transform = chipTransform(0);
+    c3.classList.add('on');
+  }
+  requestAnimationFrame(placeHits);
+}
+function flyClone(chip, fromRect) {
+  const el = document.createElement('div');
+  el.className = 'fly-chip';
+  el.style.fontSize = (fromRect.width / 10) + 'px';
+  el.innerHTML = chipHTML(chip);
+  el.style.transform = `translate(${fromRect.left}px,${fromRect.top}px)`;
+  document.body.append(el);
+  return el;
 }
 function contactFx() {
-  const drv = $('#driver');
+  const d = $('#deck');
   VoxEngine.sfx('insert');
-  drv.classList.remove('thunk'); void drv.offsetWidth; drv.classList.add('thunk');
+  d.classList.remove('thunk'); void d.offsetWidth; d.classList.add('thunk');
   try { navigator.vibrate && navigator.vibrate(18); } catch (e) {}
 }
-async function insertCurrent(fromY) {
+async function animateLift(c3, from, to, dur, easing) {
+  const a = c3.animate([{ transform: chipTransform(from) }, { transform: chipTransform(to) }], { duration: S.reduceMotion ? 1 : dur, easing, fill: 'forwards' });
+  try { await a.finished; } catch (e) {}
+  c3.style.transform = chipTransform(to);
+  try { a.cancel(); } catch (e) {}
+}
+async function insertCurrent() {
   const ci = centerIndex();
   const chip = W.list[ci];
   if (!chip || W.inserting) return;
-  W.inserting = true;
-  const drv = $('#driver');
   if (S.insertedId && S.insertedId !== chip.id) await ejectChip(true);
+  W.inserting = true;
+  const deck = $('#deck');
   const card = W.cards[ci];
+  const from = card.querySelector('.chip').getBoundingClientRect();
   card.classList.remove('dragging');
   W.dragCard = null; W.dragY = 0;
-  S.insertedId = chip.id; // ghost the wheel card
-  layoutWheel();
-  const el = makeSlotChip(chip, fromY);
-  drv.classList.add('armed');
-  const dur = S.reduceMotion ? 1 : 600;
-  const anim = el.animate([
-    { transform: `translateY(${fromY}px)`, easing: 'cubic-bezier(.55,0,.85,.55)' },
-    { transform: `translateY(${SLOT_FINAL + 12}px)`, offset: 0.6, easing: 'cubic-bezier(.2,.9,.3,1)' },
-    { transform: `translateY(${SLOT_FINAL - 4}px)`, offset: 0.82 },
-    { transform: `translateY(${SLOT_FINAL}px)` },
-  ], { duration: dur, fill: 'forwards' });
-  setTimeout(() => {
-    contactFx(); drv.classList.remove('armed'); drv.classList.add('loaded', 'inject');
-    setTimeout(() => drv.classList.remove('inject'), 750);
-  }, dur * 0.6);
-  try { await anim.finished; } catch (e) {}
-  el.style.transform = `translateY(${SLOT_FINAL}px)`;
-  try { anim.cancel(); } catch (e) {}
+  S.insertedId = chip.id;
+  layoutWheel(); // the wheel slot becomes a ghost
+  const c3 = $('#chip3d');
+  setChip3d(chip);
+  c3.classList.remove('on');
+  c3.style.transform = chipTransform(DK.chipLift);
+  const to = c3.querySelector('.chip').getBoundingClientRect();
+  deck.classList.add('armed');
+  // 1) fly to the hover point above the slit (screen space)
+  const fly = flyClone(chip, from);
+  const k = to.width / from.width;
+  const dx = to.left - from.left, dy = to.top - from.top;
+  const fa = fly.animate([
+    { transform: `translate(${from.left}px,${from.top}px) scale(1)` },
+    { transform: `translate(${from.left + dx * 0.55}px,${from.top + dy * 0.35 - 18}px) scale(${(1 + k) / 2}) rotate(-3deg)`, offset: 0.5 },
+    { transform: `translate(${to.left}px,${to.top}px) scale(${k})` },
+  ], { duration: S.reduceMotion ? 1 : 420, easing: 'cubic-bezier(.4,.1,.3,1)', fill: 'forwards' });
+  fly.style.transformOrigin = '0 0';
+  try { await fa.finished; } catch (e) {}
+  c3.classList.add('on');
+  fly.remove();
+  // 2) slide straight down along the slit axis, seat with a small bounce
+  await animateLift(c3, DK.chipLift, -4, 300, 'cubic-bezier(.55,0,.9,.6)');
+  contactFx();
+  deck.classList.remove('armed');
+  deck.classList.add('loaded');
+  await animateLift(c3, -4, 0, 160, 'cubic-bezier(.2,.9,.3,1)');
   W.inserting = false;
   saveSettings();
   applyParams();
   updateDriver();
+  placeHits();
   if (VoxEngine.status.state === 'live') toast(`「${chip.name}」の声に切り替えました`);
 }
 async function ejectChip(quick) {
-  const el = $('#slotClip .slot-chip');
   const id = S.insertedId;
-  if (!el || !id) { S.insertedId = null; updateDriver(); return; }
-  if (!quick) {
-    W.inserting = true;
-    const i = W.list.findIndex((c) => c.id === id);
-    if (i >= 0 && i !== centerIndex()) {
-      const n = W.cards.length;
-      await new Promise((r) => animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), r));
-    }
-    VoxEngine.sfx('eject');
+  const c3 = $('#chip3d');
+  if (!id || !c3) { S.insertedId = null; updateDriver(); return; }
+  const deck = $('#deck');
+  W.inserting = true;
+  $('#hitChip').style.display = 'none';
+  VoxEngine.sfx('eject');
+  // 1) slide up out of the slit
+  await animateLift(c3, 0, quick ? 70 : DK.chipLift, quick ? 200 : 320, 'cubic-bezier(.2,.8,.3,1)');
+  deck.classList.remove('loaded');
+  if (quick) {
+    const a = c3.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
+    try { await a.finished; } catch (e) {}
+    try { a.cancel(); } catch (e) {}
+    c3.classList.remove('on'); setChip3d(null);
+    S.insertedId = null; W.inserting = false; layoutWheel(); updateDriver();
+    return;
   }
-  const frames = quick
-    ? [{ transform: `translateY(${SLOT_FINAL}px)`, opacity: 1 }, { transform: `translateY(${SLOT_FINAL - 110}px)`, opacity: 0 }]
-    : [{ transform: `translateY(${SLOT_FINAL}px)` }, { transform: `translateY(${SLOT_FINAL + 8}px)`, offset: 0.14 }, { transform: 'translateY(-8px)', offset: 0.78 }, { transform: 'translateY(0)' }];
-  const anim = el.animate(frames, { duration: S.reduceMotion ? 1 : quick ? 260 : 520, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' });
-  $('#driver').classList.remove('loaded');
-  try { await anim.finished; } catch (e) {}
-  el.remove();
+  // 2) fly back to its place in the wheel
+  const chip = chipById(id);
+  const i = W.list.findIndex((c) => c.id === id);
+  if (i >= 0 && i !== centerIndex()) {
+    const n = W.cards.length;
+    await new Promise((r) => animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), r));
+  }
+  const from = c3.querySelector('.chip').getBoundingClientRect();
+  const target = i >= 0 ? W.cards[i].querySelector('.chip').getBoundingClientRect() : null;
+  c3.classList.remove('on');
+  if (chip && target) {
+    const fly = flyClone(chip, from);
+    fly.style.transformOrigin = '0 0';
+    const k = target.width / from.width;
+    const fa = fly.animate([
+      { transform: `translate(${from.left}px,${from.top}px) scale(1)` },
+      { transform: `translate(${target.left}px,${target.top}px) scale(${k})` },
+    ], { duration: S.reduceMotion ? 1 : 380, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' });
+    try { await fa.finished; } catch (e) {}
+    fly.remove();
+  }
+  setChip3d(null);
   S.insertedId = null;
-  if (!quick) { W.inserting = false; saveSettings(); applyParams(); }
-  layoutWheel();
-  updateDriver();
+  W.inserting = false;
+  saveSettings(); applyParams();
+  layoutWheel(); updateDriver();
 }
 
 /* ---- conversion / recording ---- */
@@ -430,115 +497,120 @@ async function saveRecording(res, kind, nameOverride) {
   return rec;
 }
 
-/* ---- driver display ---- */
+/* ---- deck display ---- */
 function updateVol(flash) {
-  const v = $('#volLed'); if (v) v.style.width = (S.volume / 1.5) * 100 + '%';
-  if (flash) { W.volFlash = performance.now(); }
+  const p = (S.volume / 1.5) * 100;
+  const f = $('#dkVolFill'), k = $('#dkVolKnob');
+  if (f) f.style.width = p + '%';
+  if (k) k.style.left = p + '%';
+  if (flash) W.volFlash = performance.now();
 }
 function updateDriver() {
-  const drv = $('#driver'); if (!drv) return;
+  const deck = $('#deck'); if (!deck) return;
   const st = VoxEngine.status, chip = chipById(S.insertedId);
   const live = st.state === 'live', rec = VoxEngine.recording();
-  drv.classList.toggle('loaded', !!chip && !W.inserting);
-  drv.classList.toggle('live', live);
-  drv.classList.toggle('rec', rec);
+  deck.classList.toggle('loaded', !!chip && !W.inserting);
+  deck.classList.toggle('live', live);
   $('#stage').classList.toggle('has-chip', !!chip);
-  $('#scrName').textContent = chip ? chip.name : 'メモリを挿入';
-  $('#kOut') && $('#kOut').classList.toggle('on', !!VoxEngine.status.sinkId);
-  $('#ringLbl').textContent = live ? 'LIVE' : st.state === 'starting' ? '...' : 'CONVERT';
+  $('#kConv').classList.toggle('on', live);
+  $('#kConvTxt').textContent = live ? '変換中' : st.state === 'starting' ? '起動中…' : '変換 ON';
   $('#kMon').classList.toggle('on', S.monitor);
   $('#kRec').classList.toggle('on', rec);
   $('#kFx').classList.toggle('on', S.fx.length > 0);
+  const ic = { mon: S.monitor, rec, fx: S.fx.length > 0, out: !!st.sinkId };
+  $$('#deck [data-ic]').forEach((s) => s.classList.toggle('on', !!ic[s.dataset.ic]));
+  $('#dkName').textContent = chip ? chip.name : 'メモリを挿入';
+  const tag = chip ? (chip.tag || KIND_TAG[chip.kind] || 'MEMORY') : '';
+  $('#hoCode').textContent = chip ? `VX-${String(S.chips.indexOf(chip) + 1).padStart(2, '0')} · ${tag}` : '';
+  $('#hoName').textContent = chip ? chip.name : '';
   updateVol();
-  const lat = VoxEngine.latencyMs();
-  const fxNames = S.fx.map((l) => FX_LIB.find((f) => f.id === l.id)?.name).filter(Boolean);
-  $('#statusStrip').innerHTML = `
-    <button class="sq ${S.monitor ? 'hot' : ''}" id="sqMon"><span class="k">OUT</span><b>${S.monitor ? 'モニター' : 'ミュート'}</b></button>
-    <button class="sq ${fxNames.length ? 'hot' : ''}" id="sqFx"><span class="k">FX</span><b>${fxNames.length ? esc(fxNames.join('+')) : 'なし'}</b></button>
-    <button class="sq" id="sqLat"><span class="k">LAT</span><b>${lat ? '約' + lat + 'ms' : '—'}</b></button>`;
-  $('#sqMon').onclick = () => $('#kMon').click();
-  $('#sqFx').onclick = () => go('fx');
-  $('#sqLat').onclick = () => go('output');
 }
 
-/* voice core canvas: circular oscilloscope */
-let scrCtx = null, scrW = 0, scrH = 0;
+/* hologram canvas: circular spectrum driven by the converted voice */
+let hoCtx = null, hoSize = 0;
+const freqBuf = new Uint8Array(1024);
 const waveBuf = new Float32Array(2048);
-function sizeCanvas() {
-  const c = $('#scrWave'); if (!c) return;
+function sizeHolo() {
+  const c = $('#holoCv'); if (!c) return;
   const dpr = Math.min(3, (window.devicePixelRatio || 1) * (W.scale || 1));
-  scrW = scrH = Math.round(80 * dpr);
-  c.width = scrW; c.height = scrH; scrCtx = c.getContext('2d');
+  hoSize = Math.round(160 * dpr);
+  c.width = c.height = hoSize; hoCtx = c.getContext('2d');
 }
 let lastScr = 0;
+const HOLO_N = 84;
+const holoVals = new Float32Array(HOLO_N);
 function screenLoop(t) {
   requestAnimationFrame(screenLoop);
   if (S.tab !== 'home' || t - lastScr < 33) return;
   lastScr = t;
-  if (!scrCtx) sizeCanvas();
-  if (!scrCtx) return;
+  if (!hoCtx) sizeHolo();
+  if (!hoCtx) return;
   const st = VoxEngine.status, live = st.state === 'live', chip = chipById(S.insertedId);
-  const g = scrCtx; g.clearRect(0, 0, scrW, scrH);
-  const cx = scrW / 2, cy = scrH / 2, R0 = scrW * 0.27;
-  const col = chip ? chip.color : '#a487ff';
   const stage = $('#stage');
-  let vals = null;
+  // level + spectrum
+  let lvNow = 0;
   if (live && st.outAnalyser) {
     st.outAnalyser.getFloatTimeDomainData(waveBuf);
     let pk = 0; for (let i = 0; i < 1024; i += 2) pk = Math.max(pk, Math.abs(waveBuf[i]));
-    W.lv = (W.lv || 0) * 0.7 + Math.min(1, pk * 1.4) * 0.3;
-    stage.style.setProperty('--lv', W.lv.toFixed(3));
-    $('#driver').style.setProperty('--under', (0.3 + W.lv * 0.7).toFixed(3));
-    vals = waveBuf;
-  } else if (W.lv) { W.lv = 0; stage.style.setProperty('--lv', '0'); $('#driver').style.setProperty('--under', '.28'); }
-  // inner glow
-  const glow = g.createRadialGradient(cx, cy, 0, cx, cy, scrW * 0.5);
-  glow.addColorStop(0, chip ? col + (live ? '66' : '33') : 'rgba(164,135,255,.12)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = glow; g.fillRect(0, 0, scrW, scrH);
-  const N = 96;
-  const ring = (amp, phase, alpha, width, color) => {
-    g.beginPath();
-    for (let i = 0; i <= N; i++) {
-      const k = i / N, a = k * Math.PI * 2 - Math.PI / 2;
-      let v;
-      if (vals) v = clamp((vals[(i % N) * 8] || 0) * 3.2, -1, 1);
-      else v = Math.sin(k * Math.PI * 6 + phase) * 0.5 + Math.sin(k * Math.PI * 14 - phase * 1.7) * 0.5;
-      const r = R0 + v * amp;
-      const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
-      i ? g.lineTo(x, y) : g.moveTo(x, y);
+    lvNow = Math.min(1, pk * 1.4);
+    st.outAnalyser.getByteFrequencyData(freqBuf);
+  }
+  W.lv = W.lv * 0.7 + lvNow * 0.3;
+  stage.style.setProperty('--lv', W.lv.toFixed(3));
+  const half = HOLO_N / 2;
+  for (let i = 0; i < HOLO_N; i++) {
+    let target;
+    if (live && st.outAnalyser) {
+      const k = i < half ? i : HOLO_N - 1 - i; // mirror: low freqs at the top, symmetric ring
+      const bin = Math.floor(2 + Math.pow(k / half, 1.6) * 180);
+      target = freqBuf[bin] / 255;
+    } else {
+      target = 0.18 + 0.12 * Math.sin(t / 700 + i * 0.45) * Math.cos(t / 1100 + i * 0.13);
     }
-    g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = width; g.stroke(); g.globalAlpha = 1;
-  };
-  g.shadowColor = col; g.shadowBlur = scrW / 10;
-  const ph = t / 700;
-  const amp = vals ? scrW * 0.16 : chip ? scrW * 0.035 : scrW * 0.012;
-  ring(amp * 0.6, ph + 1.2, 0.45, scrW / 80, '#7fdcff');
-  ring(amp, ph, 1, scrW / 50, col);
-  g.shadowBlur = 0;
-  // LED ring (output level) + VU (input level)
-  if (!W.ringLeds) { W.ringLeds = $$('#ledRing line'); W.vu = $$('#scrVu i'); }
-  const outN = live ? Math.round(clamp((W.lv || 0) * 1.25, 0, 1) * W.ringLeds.length) : 0;
-  W.ringLeds.forEach((l, i) => { const on = i < outN; l.classList.toggle('on', on); l.classList.toggle('hot', on && i >= W.ringLeds.length - 4); });
-  const inLv = live ? readLevel(st.inAnalyser) : 0;
-  const inN = Math.round(clamp(inLv * 1.5, 0, 1) * W.vu.length);
-  W.vu.forEach((v, i) => { const on = i < inN; v.classList.toggle('on', on); v.classList.toggle('hot', on && i >= W.vu.length - 3); });
-  // text lines
-  const stEl = $('#scrSt');
-  let stTxt = !chip ? 'NO MEMORY' : 'READY', cls = 'v st';
-  if (live) { stTxt = 'LIVE'; cls = 'v st live'; }
-  if (VoxEngine.recording()) { stTxt = '● REC ' + fmtSec((Date.now() - st.recStart) / 1000); cls = 'v st rec'; }
-  if (st.state === 'error') stTxt = 'MIC ERROR';
-  if (stEl.textContent !== stTxt) stEl.textContent = stTxt;
-  stEl.className = cls;
-  let L = '—', R = '—', T = '—';
-  const pp = chip ? combinedParams() : null;
-  if (chip) { L = KIND_LABEL[chip.kind] || '—'; R = pp.robotHz ? 'ROBO ' + Math.round(pp.robotHz) : signed(pp.pitch, 1) + 'st'; T = signed(pp.formant, 1) + 'st'; }
-  if (live) { R = st.f0 ? Math.round(st.f0) + 'Hz ' + noteName(st.f0) : '—'; }
-  if (W.volFlash && t - W.volFlash < 1200) T = 'VOL ' + Math.round((S.volume / 1.5) * 100) + '%';
-  const l = $('#scrL'), r = $('#scrR'), tt = $('#scrT');
-  if (l.textContent !== L) l.textContent = L;
-  if (r.textContent !== R) r.textContent = R;
-  if (tt.textContent !== T) tt.textContent = T;
+    holoVals[i] += (target - holoVals[i]) * 0.35;
+  }
+  if (chip) {
+    const g = hoCtx, S2 = hoSize, c = S2 / 2;
+    g.clearRect(0, 0, S2, S2);
+    const r1 = S2 * 0.36, len = S2 * 0.12;
+    const draw = (col, ox, alpha, width) => {
+      g.globalAlpha = alpha; g.lineWidth = width; g.lineCap = 'round';
+      for (let i = 0; i < HOLO_N; i++) {
+        const a = (i / HOLO_N) * Math.PI * 2 - Math.PI / 2;
+        const v = clamp(holoVals[i], 0.06, 1);
+        g.strokeStyle = typeof col === 'function' ? col(a) : col;
+        g.beginPath();
+        g.moveTo(c + ox + Math.cos(a) * r1, c + Math.sin(a) * r1);
+        g.lineTo(c + ox + Math.cos(a) * (r1 + v * len), c + Math.sin(a) * (r1 + v * len));
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    };
+    const base = chip.color || '#c8b4ff';
+    draw('#7fe8ff', S2 * 0.012, 0.3, S2 / 140);
+    g.shadowColor = base; g.shadowBlur = S2 / 40;
+    draw((a) => mixHex(mixHex(base, '#ffffff', 0.35), '#ffb3e2', (Math.sin(a) + 1) / 2), 0, 1, S2 / 150);
+    g.shadowBlur = 0;
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = S2 / 300;
+    g.beginPath(); g.arc(c, c, S2 * 0.325, 0, Math.PI * 2); g.stroke();
+    g.save(); g.translate(c, c); g.rotate(t / 1900);
+    g.strokeStyle = 'rgba(230,220,255,.75)'; g.setLineDash([S2 * 0.25, S2 * 0.075, S2 * 0.025, S2 * 0.075]);
+    g.beginPath(); g.arc(0, 0, S2 * 0.29, 0, Math.PI * 2); g.stroke(); g.restore(); g.setLineDash([]);
+  }
+  // texts on the plate + hologram
+  const rec = VoxEngine.recording();
+  const status = !chip ? 'VOICE CORE · STANDBY' : rec ? 'VOICE CORE · ● REC ' + fmtSec((Date.now() - st.recStart) / 1000) : live ? 'VOICE CORE · LIVE' : 'VOICE CORE · LINKED';
+  const db = W.lv > 0.001 ? Math.round(20 * Math.log10(W.lv)) : null;
+  let info = '—', hinfo = '';
+  if (chip) {
+    const pp = combinedParams();
+    info = pp.robotHz ? `ROBO ${Math.round(pp.robotHz)}Hz · TONE ${signed(pp.formant, 1)}` : `PITCH ${signed(pp.pitch, 1)} · TONE ${signed(pp.formant, 1)}`;
+    hinfo = live ? 'TAP CORE TO STOP' : 'TAP CORE TO CONVERT';
+  }
+  if (live) { const f = st.f0 ? `${Math.round(st.f0)} Hz · ♪ ${noteName(st.f0)}` : '— Hz'; info = f + (db !== null ? ` · ${db} dB` : ''); hinfo = st.f0 ? f : 'LISTENING…'; }
+  if (W.volFlash && t - W.volFlash < 1200) info = 'VOLUME ' + Math.round((S.volume / 1.5) * 100) + '%';
+  const set = (id, v) => { const e = $('#' + id); if (e && e.textContent !== v) e.textContent = v; };
+  set('dkStatus', status); set('dkInfo', info); set('hoInfo', hinfo);
   if (live && t % 1000 < 40) updateDriver();
 }
 
