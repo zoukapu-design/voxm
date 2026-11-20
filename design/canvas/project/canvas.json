@@ -100,6 +100,34 @@
    "w": 390,
    "h": 660,
    "title": "D — FAN 扇形展開"
+  },
+  "MSHoloShelf.dc.html": {
+   "x": 0,
+   "y": 3740,
+   "w": 390,
+   "h": 660,
+   "title": "E — HOLO SHELF ホロ・シェルフ"
+  },
+  "MSDial.dc.html": {
+   "x": 470,
+   "y": 3740,
+   "w": 390,
+   "h": 660,
+   "title": "F — DIAL 回転ダイヤル"
+  },
+  "MSMeterBank.dc.html": {
+   "x": 940,
+   "y": 3740,
+   "w": 390,
+   "h": 660,
+   "title": "G — METER BANK メモリ・メーター"
+  },
+  "MSHaloGauge.dc.html": {
+   "x": 1410,
+   "y": 3740,
+   "w": 390,
+   "h": 660,
+   "title": "H — HALO GAUGE ハロ・ゲージ"
   }
  },
  "order": [
@@ -115,7 +143,11 @@
   "MSRevolver.dc.html",
   "MSStack.dc.html",
   "MSOrbit.dc.html",
-  "MSFan.dc.html"
+  "MSFan.dc.html",
+  "MSHoloShelf.dc.html",
+  "MSDial.dc.html",
+  "MSMeterBank.dc.html",
+  "MSHaloGauge.dc.html"
  ],
  "notes": {
   "head": {
@@ -143,6 +175,13 @@
    "x": 0,
    "y": 2440,
    "text": "複数差し — 4案（ループ再生：3枚差す → 1枚抜く）",
+   "kind": "title1",
+   "maxW": 1800
+  },
+  "row5": {
+   "x": 0,
+   "y": 3480,
+   "text": "取り込み → アイコン表示 → タップで戻して引き抜く — 4案（ループ再生 12秒）",
    "kind": "title1",
    "maxW": 1800
   }
