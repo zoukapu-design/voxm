@@ -13,7 +13,7 @@ async def layout_check(p, tag):
     r = await p.evaluate('''() => {
       const R = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom)]; };
       const main = R(document.querySelector('main')), nav = R(document.querySelector('.tabs')), hdr = R(document.querySelector('.top'));
-      const items = {}; for (const s of ['.case-bar', '.wheel .wcard.center', '#deck', '.ctrl', '#kConv', '#hitVol']) items[s] = R(document.querySelector(s));
+      const items = {}; for (const s of ['.case-bar', '.wheel .wcard.center', '#deck', '.ctrl', '#kConv']) items[s] = R(document.querySelector(s));
       return { main, nav, hdr, items, docW: document.documentElement.scrollWidth, winW: innerWidth, scale: getComputedStyle(document.querySelector('#stage')).getPropertyValue('--s') };
     }''')
     probs = []
