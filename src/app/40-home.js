@@ -4,7 +4,7 @@ const STEP = 104;
 // The deck faces the viewer; one small slit sits exactly under the wheel's centre card, so a chip drops straight in.
 // Inserted chips are drawn fully inside (absorbed) and show up as icons on the deck's tilted display panel (up to 3).
 // Tapping an icon sends that chip back up out of the slit, where it can be pulled out.
-const DK = { W: 350, H: 236, R: 60, plateZ: 34, slitY: 46, slitW: 98, panelY: 212, panelH: 84 };
+const DK = { W: 350, H: 236, R: 60, plateZ: 34, slitY: 46, slitW: 98, panelY: 196, panelH: 110 };
 const CARD = { left: 130, w: 130, h: 180 };
 const SEAT = { k: 0.6, show: 86 }; // chip size in the slit, and how much stays above it when it comes back up
 const SLOT_X = 195;
@@ -70,9 +70,8 @@ function buildDeck() {
   // display panel: tilts up from the front of the plate toward the viewer
   top.style.transformStyle = 'preserve-3d';
   const ph = DK.panelH;
-  dEl('face dk-pbase', `inset:auto;left:40px;top:${DK.panelY - 5}px;width:${w - 80}px;height:7px;border-radius:4px`, top);
-  const panel = dEl('face dk-panel', `inset:auto;left:44px;top:${DK.panelY - ph}px;width:${w - 88}px;height:${ph}px;border-radius:14px;transform-origin:50% 100%;transform:rotateX(-58deg)`, top);
-  panel.innerHTML = `<i class="dp-sheen"></i><div class="dp-cells">${[0, 1, 2].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div></div>`).join('')}</div>`;
+  const panel = dEl('face dk-panel', `inset:auto;left:40px;top:${DK.panelY - ph}px;width:${w - 80}px;height:${ph}px`, top);
+  panel.innerHTML = `<div class="dp-cells">${[0, 1, 2].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div></div>`).join('')}</div>`;
 }
 
 RENDER.home = () => {

@@ -153,9 +153,9 @@ main { flex: 1; position: relative; min-height: 0; }
 .deck-floor { position: absolute; left: 25px; top: 440px; width: 340px; height: 110px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--tint) calc(45% + var(--lv, 0) * 50%), transparent), color-mix(in srgb, var(--tint) 10%, transparent) 60%, transparent); filter: blur(14px); }
 .deck-scene { position: absolute; left: 20px; top: 340px; width: 350px; height: 236px; perspective: 1000px; perspective-origin: 50% -60%; z-index: 15; pointer-events: none; }
-.deck-obj { position: absolute; left: 0; top: 0; width: 350px; height: 236px; transform-style: preserve-3d; transform: rotateX(62deg); }
+.deck-obj { position: absolute; left: 0; top: 0; width: 350px; height: 236px; transform-style: preserve-3d; transform: rotateX(54deg); }
 .deck-obj.thunk { animation: deckThunk .34s cubic-bezier(.3,.7,.4,1); }
-@keyframes deckThunk { 30% { transform: rotateX(62deg) translateZ(-4px); } 65% { transform: rotateX(62deg) translateZ(1px); } }
+@keyframes deckThunk { 30% { transform: rotateX(54deg) translateZ(-4px); } 65% { transform: rotateX(54deg) translateZ(1px); } }
 .deck-obj .L, .deck-obj .face { position: absolute; }
 .deck-obj .face { inset: 0; }
 .floor-grid { pointer-events: none; opacity: .85;
@@ -473,26 +473,22 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .dk-collar { border-radius: 15px; background: radial-gradient(closest-side, rgba(170,150,230,.18), transparent); box-shadow: inset 0 0 0 1px rgba(170,150,230,.35), inset 0 2px 6px rgba(120,100,190,.25); pointer-events: none; }
 .deck.absorbing .dk-slit { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #fff, 0 0 26px 7px color-mix(in srgb, var(--tint) 70%, #fff); }
 .dk-pbase { background: linear-gradient(180deg, rgba(120,100,190,.35), rgba(255,255,255,.6)); box-shadow: inset 0 1px 2px rgba(80,60,150,.4); }
-/* clear acrylic plate standing on the deck: just the icons float on it */
-.dk-panel { backface-visibility: hidden; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(236,230,255,.08) 55%, rgba(255,255,255,.16));
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.75), inset 0 1.5px 0 #fff, inset 0 -2px 0 rgba(170,150,235,.55), 0 4px 14px rgba(110,80,200,.16); }
-.dp-sheen { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; overflow: hidden;
-  background: linear-gradient(115deg, transparent 18%, rgba(255,255,255,.55) 24%, transparent 31%, transparent 62%, rgba(255,255,255,.28) 66%, transparent 70%); }
-.dp-cells { position: relative; display: flex; gap: 22px; align-items: center; }
-.dp-cell { --c: #a487ff; width: 50px; height: 50px; display: grid; place-items: center; }
-.dp-ic { width: 46px; height: 46px; display: grid; place-items: center; opacity: 0; transform: scale(.4); transition: opacity .35s, transform .45s cubic-bezier(.2,.9,.3,1.3); }
-.dp-cell.on .dp-ic { opacity: 1; transform: none; animation: icFloat 2.8s ease-in-out infinite alternate; }
-.dp-cell[data-cell="1"].on .dp-ic { animation-delay: -.9s; }
-.dp-cell[data-cell="2"].on .dp-ic { animation-delay: -1.8s; }
-@keyframes icFloat { from { translate: 0 1.5px; } to { translate: 0 -1.5px; } }
-.dp-ic img { width: 42px; height: 42px; object-fit: cover; border-radius: 12px; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--c) 70%, #fff), 0 0 12px var(--c), 0 4px 10px rgba(40,20,90,.35); }
-.dp-ic .art { width: 48px; height: 48px; filter: drop-shadow(0 0 .6px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 .6px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 6px color-mix(in srgb, var(--c) 70%, transparent)) saturate(1.4); }
+/* icons shown right on the deck's top surface */
+.dk-panel { display: flex; align-items: center; justify-content: center; }
+.dp-cells { position: relative; display: flex; gap: 30px; align-items: center; }
+.dp-cell { --c: #a487ff; position: relative; width: 62px; height: 62px; display: grid; place-items: center; }
+.dp-cell::before { content: ''; position: absolute; inset: -14px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 45%, transparent), transparent); opacity: 0; transition: opacity .4s; }
+.dp-cell.on::before { opacity: .7; }
+.deck.live .dp-cell.on::before { opacity: calc(.6 + var(--lv, 0) * .4); }
+.dp-ic { position: relative; width: 58px; height: 58px; display: grid; place-items: center; opacity: 0; transform: scale(.4); transition: opacity .35s, transform .45s cubic-bezier(.2,.9,.3,1.3); }
+.dp-cell.on .dp-ic { opacity: 1; transform: none; }
+.dp-ic img { width: 54px; height: 54px; object-fit: cover; border-radius: 14px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 70%, #fff), 0 0 12px var(--c); }
+.dp-ic .art { width: 60px; height: 60px; filter: drop-shadow(0 0 .7px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 .7px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 6px color-mix(in srgb, var(--c) 70%, transparent)) saturate(1.4); }
 .dp-ic .art svg > rect, .dp-ic .art svg > g[opacity] { display: none; }
 .dp-ic .art svg { width: 100%; height: 100%; display: block; }
-.dp-ic .mono { font-family: var(--tech); font-size: 26px; color: var(--c); text-shadow: 0 0 8px var(--c); }
-.dp-cell.pop .dp-ic { animation: icPop .6s cubic-bezier(.2,.9,.3,1.3), icFloat 2.8s ease-in-out .6s infinite alternate; }
+.dp-ic .mono { font-family: var(--tech); font-size: 30px; color: var(--c); text-shadow: 0 0 8px var(--c); }
+.dp-cell.pop .dp-ic { animation: icPop .6s cubic-bezier(.2,.9,.3,1.3); }
 @keyframes icPop { 0% { transform: scale(.3); filter: brightness(3); } 60% { transform: scale(1.15); } 100% { transform: none; filter: none; } }
-.dp-cell.send .dp-ic { opacity: 0; transform: scale(.3) translateY(-20px); transition: opacity .3s, transform .35s ease-in; }
+.dp-cell.send .dp-ic { opacity: 0; transform: scale(.3); transition: opacity .3s, transform .35s ease-in; }
 .hit-cell { background: none; border: 0; padding: 0; border-radius: 10px; }
 .hit-cell:disabled { pointer-events: none; }
