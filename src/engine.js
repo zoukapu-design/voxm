@@ -9,12 +9,12 @@ const VoxEngine = (() => {
     inAnalyser: null, outAnalyser: null, outGain: null, monitorGain: null, recDest: null,
     f0: 0, level: 0, params: null, monitor: true, volume: 0.8, sinkId: '',
     recorder: null, recChunks: [], recStart: 0, recMime: '',
-    fallbackCore: null,
+    fallbackCore: null, lastMsg: 0, needsResume: false, restarts: 0, opts: {},
   };
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => { try { fn(st); } catch (e) { console.warn(e); } });
 
-  const DEFAULT = { pitch: 0, formant: 0, robotHz: 0, ring: 0, ringHz: 40, lowcut: 70, highcut: 16000, bass: 0, presence: 0, drive: 0, chorus: 0, echo: 0, reverb: 0 };
+  const DEFAULT = { pitch: 0, formant: 0, robotHz: 0, ring: 0, ringHz: 40, vib: 0, vibHz: 5.5, tune: 0, trem: 0, tremHz: 6, crush: 0, lowcut: 70, highcut: 16000, bass: 0, presence: 0, drive: 0, chorus: 0, echo: 0, reverb: 0 };
 
   function supported() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.AudioContext || window.webkitAudioContext));
@@ -55,7 +55,7 @@ const VoxEngine = (() => {
     n.lp = ctx.createBiquadFilter(); n.lp.type = 'lowpass'; n.lp.Q.value = 0.7;
     input.connect(n.bass); n.bass.connect(n.pres); n.pres.connect(n.hp); n.hp.connect(n.lp);
     // drive (parallel)
-    n.dry = ctx.createGain(); n.shaper = ctx.createWaveShaper(); n.shaper.oversample = '2x'; n.wetDrive = ctx.createGain();
+    n.dry = ctx.createGain(); n.shaper = ctx.createWaveShaper(); n.shaper.oversample = 'none'; n.wetDrive = ctx.createGain(); // no oversampling: it would delay the wet path
     n.sum1 = ctx.createGain();
     n.lp.connect(n.dry); n.dry.connect(n.sum1);
     n.lp.connect(n.shaper); n.shaper.connect(n.wetDrive); n.wetDrive.connect(n.sum1);
@@ -78,8 +78,9 @@ const VoxEngine = (() => {
     // master
     n.master = ctx.createGain();
     n.sum2.connect(n.master); n.echoWet.connect(n.master); n.verbWet.connect(n.master);
-    n.comp = ctx.createDynamicsCompressor();
-    n.comp.threshold.value = -16; n.comp.knee.value = 10; n.comp.ratio.value = 4; n.comp.attack.value = 0.004; n.comp.release.value = 0.18;
+    // zero-latency soft clipper instead of DynamicsCompressor (which adds a ~6 ms look-ahead delay)
+    n.comp = ctx.createWaveShaper(); n.comp.oversample = 'none';
+    { const c = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1, a = Math.abs(x); c[i] = a < 0.6 ? x : Math.sign(x) * (0.6 + 0.38 * Math.tanh((a - 0.6) / 0.38)); } n.comp.curve = c; }
     n.master.connect(n.comp);
     let lastDrive = -1;
     function update(p, instant) {
@@ -99,7 +100,7 @@ const VoxEngine = (() => {
   }
 
   function coreParams(p) {
-    return { pitch: Math.pow(2, p.pitch / 12), formant: Math.pow(2, p.formant / 12), robotHz: p.robotHz, ring: p.ring, ringHz: p.ringHz };
+    return { pitch: Math.pow(2, p.pitch / 12), formant: Math.pow(2, p.formant / 12), robotHz: p.robotHz, ring: p.ring, ringHz: p.ringHz, vib: p.vib, vibHz: p.vibHz, tune: p.tune, trem: p.trem, tremHz: p.tremHz, crush: p.crush };
   }
 
   async function createCoreNode(ctx) {
@@ -113,8 +114,9 @@ class VoxmProcessor extends AudioWorkletProcessor {
   process(inputs, outputs){
     const inp = inputs[0] && inputs[0][0]; const out = outputs[0][0];
     if (!out) return true;
-    if (inp) this.core.process(inp, out); else out.fill(0);
-    if (++this.tick >= 12) { this.tick = 0; this.port.postMessage({ f0: this.core.f0, level: this.core.level, lat: this.core.latencySamples() }); }
+    try { if (inp) this.core.process(inp, out); else out.fill(0); }
+    catch (e) { this.core.reset(); out.fill(0); } // never let an exception kill the node (it would go silent for good)
+    if (++this.tick >= 12) { this.tick = 0; this.port.postMessage({ f0: this.core.f0, level: this.core.level, lat: this.core.latencySamples(), faults: this.core.faults }); }
     return true;
   }
 }
@@ -122,7 +124,7 @@ registerProcessor('voxm-core', VoxmProcessor);`;
         const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
         await ctx.audioWorklet.addModule(url);
         const node = new AudioWorkletNode(ctx, 'voxm-core', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 1, channelCountMode: 'explicit' });
-        node.port.onmessage = (e) => { st.f0 = e.data.f0; st.level = e.data.level; st.coreLatency = e.data.lat / ctx.sampleRate; };
+        node.port.onmessage = (e) => { st.lastMsg = performance.now(); st.f0 = e.data.f0; st.level = e.data.level; st.coreLatency = e.data.lat / ctx.sampleRate; };
         st.coreKind = 'AudioWorklet';
         return { node, set: (pp) => node.port.postMessage({ params: pp }) };
       } catch (e) { console.warn('AudioWorklet unavailable, falling back', e); }
@@ -131,6 +133,7 @@ registerProcessor('voxm-core', VoxmProcessor);`;
     const core = new VoxCore(ctx.sampleRate);
     const node = ctx.createScriptProcessor(512, 1, 1);
     node.onaudioprocess = (e) => {
+      st.lastMsg = performance.now();
       core.process(e.inputBuffer.getChannelData(0), e.outputBuffer.getChannelData(0));
       st.f0 = core.f0; st.level = core.level; st.coreLatency = core.latencySamples() / ctx.sampleRate + 512 / ctx.sampleRate;
     };
@@ -138,39 +141,53 @@ registerProcessor('voxm-core', VoxmProcessor);`;
     return { node, set: (pp) => core.set(pp) };
   }
 
+  // mic → core → FX → out. Re-runnable on the same context (used to self-heal after iOS interruptions).
+  async function buildGraph() {
+    const ctx = st.ctx, opts = st.opts;
+    const safe = opts.safeMode !== false;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
+    st.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: safe, noiseSuppression: !!opts.noiseSuppression, autoGainControl: false, channelCount: 1, latency: { ideal: 0 } },
+    });
+    st.src = ctx.createMediaStreamSource(st.stream); // kept on `st` so it is never garbage-collected
+    st.inAnalyser = ctx.createAnalyser(); st.inAnalyser.fftSize = 1024;
+    st.src.connect(st.inAnalyser);
+    st.core = await createCoreNode(ctx);
+    st.src.connect(st.core.node);
+    st.fx = buildFx(ctx, st.core.node);
+    st.outGain = ctx.createGain();
+    st.fx.output.connect(st.outGain);
+    st.outAnalyser = ctx.createAnalyser(); st.outAnalyser.fftSize = 2048;
+    st.outGain.connect(st.outAnalyser);
+    st.monitorGain = ctx.createGain();
+    st.outGain.connect(st.monitorGain); st.monitorGain.connect(ctx.destination);
+    if (!st.recDest) st.recDest = ctx.createMediaStreamDestination(); // reused across self-heals so recordings continue
+    st.outGain.connect(st.recDest);
+    if (st.sinkId && ctx.setSinkId) { try { await ctx.setSinkId(st.sinkId); } catch (e) { console.warn(e); } }
+    setParams(st.params || DEFAULT, true);
+    setMonitor(st.monitor); setVolume(st.volume);
+    const track = st.stream.getAudioTracks()[0];
+    if (track) {
+      track.addEventListener('ended', () => { if (st.state === 'live' && st.stream && st.stream.getAudioTracks()[0] === track) heal('mic-ended'); });
+      track.addEventListener('unmute', () => resumeCtx());
+    }
+    st.lastMsg = performance.now();
+  }
+
   async function start(opts = {}) {
     if (st.state === 'live' || st.state === 'starting') return;
     if (!supported()) { st.state = 'error'; st.error = 'このブラウザはマイク処理に未対応です'; emit(); return; }
-    st.state = 'starting'; st.error = ''; emit();
+    st.state = 'starting'; st.error = ''; st.opts = opts; emit();
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (!st.ctx || st.ctx.state === 'closed') st.ctx = new AC({ latencyHint: 'interactive' });
-      const ctx = st.ctx;
-      if (ctx.state !== 'running') await ctx.resume();
-      const safe = opts.safeMode !== false;
-      try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
-      st.stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: safe, noiseSuppression: !!opts.noiseSuppression, autoGainControl: false, channelCount: 1 },
-      });
-      st.src = ctx.createMediaStreamSource(st.stream);
-      st.inAnalyser = ctx.createAnalyser(); st.inAnalyser.fftSize = 1024;
-      st.src.connect(st.inAnalyser);
-      st.core = await createCoreNode(ctx);
-      st.src.connect(st.core.node);
-      st.fx = buildFx(ctx, st.core.node);
-      st.outGain = ctx.createGain();
-      st.fx.output.connect(st.outGain);
-      st.outAnalyser = ctx.createAnalyser(); st.outAnalyser.fftSize = 2048;
-      st.outGain.connect(st.outAnalyser);
-      st.monitorGain = ctx.createGain();
-      st.outGain.connect(st.monitorGain); st.monitorGain.connect(ctx.destination);
-      st.recDest = ctx.createMediaStreamDestination();
-      st.outGain.connect(st.recDest);
-      if (st.sinkId && ctx.setSinkId) { try { await ctx.setSinkId(st.sinkId); } catch (e) { console.warn(e); } }
-      setParams(st.params || DEFAULT, true);
-      setMonitor(st.monitor); setVolume(st.volume);
-      st.state = 'live'; emit();
-      st.stream.getAudioTracks()[0]?.addEventListener('ended', () => { stop(); st.error = 'マイクが切断されました'; emit(); });
+      if (!st.ctx || st.ctx.state === 'closed') {
+        st.ctx = new AC({ latencyHint: 'interactive' });
+        st.ctx.addEventListener('statechange', () => { if (st.state === 'live' && st.ctx.state !== 'running') resumeCtx(); });
+      }
+      if (st.ctx.state !== 'running') await st.ctx.resume();
+      await buildGraph();
+      st.state = 'live'; st.needsResume = false; emit();
+      startWatchdog();
     } catch (e) {
       console.warn(e);
       st.state = 'error';
@@ -182,12 +199,69 @@ registerProcessor('voxm-core', VoxmProcessor);`;
     }
   }
 
-  function teardown(closeCtx) {
+  /* ---- self-healing: iOS can suspend/interrupt the audio context (calls, Siri, lock screen, other apps),
+     end or mute the mic track, or a node can stop producing audio. Detect and rebuild automatically. ---- */
+  let watchTimer = 0, deadIn = 0, deadOut = 0, healing = false, lastHeal = 0;
+  const rmsOf = (an, buf) => { an.getFloatTimeDomainData(buf); let e = 0; for (let i = 0; i < buf.length; i += 4) e += buf[i] * buf[i]; return Math.sqrt(e / (buf.length / 4)); };
+  const bufIn = new Float32Array(1024), bufOut = new Float32Array(2048);
+  async function resumeCtx() {
+    if (!st.ctx || st.ctx.state === 'running' || st.ctx.state === 'closed') return true;
+    try { await st.ctx.resume(); } catch (e) {}
+    const ok = st.ctx.state === 'running';
+    if (!ok && !st.needsResume) { st.needsResume = true; emit(); } // needs a tap (iOS gesture rule)
+    if (ok && st.needsResume) { st.needsResume = false; emit(); }
+    return ok;
+  }
+  async function heal(reason) {
+    if (healing || st.state !== 'live') return;
+    const now = performance.now();
+    if (now - lastHeal < 2500) return;
+    healing = true; lastHeal = now; st.restarts++;
+    console.warn('VOXM audio self-heal:', reason);
+    try {
+      teardown(false, true);
+      await resumeCtx();
+      await buildGraph();
+      deadIn = deadOut = 0;
+    } catch (e) {
+      console.warn(e);
+      st.state = 'error'; st.error = 'マイクが切断されました（もう一度「変換 ON」を押してください）';
+      teardown(true); emit();
+    }
+    healing = false;
+  }
+  function startWatchdog() {
+    clearInterval(watchTimer);
+    deadIn = deadOut = 0;
+    watchTimer = setInterval(async () => {
+      if (st.state !== 'live' || healing) return;
+      if (st.ctx.state !== 'running') { await resumeCtx(); return; }
+      const track = st.stream && st.stream.getAudioTracks()[0];
+      if (!track || track.readyState === 'ended') return heal('track-ended');
+      if (performance.now() - st.lastMsg > 1500) return heal('core-stalled');
+      const inR = rmsOf(st.inAnalyser, bufIn), outR = rmsOf(st.outAnalyser, bufOut);
+      deadIn = inR < 1e-7 && !track.muted ? deadIn + 1 : 0; // a live mic is never bit-exact silent
+      if (outR > 1e-5 || st.volume <= 0.01) deadOut = 0; else if (inR > 0.0015) deadOut++; // voice in, nothing out
+      if (deadIn >= 6) heal('mic-silent');
+      else if (deadOut >= 4) heal('output-silent');
+    }, 500);
+  }
+  // returning to the app: make sure the audio is running again
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && st.state === 'live') resumeCtx().then(() => { st.lastMsg = performance.now(); }); });
+  // any tap resumes a context that iOS left suspended
+  const tapResume = () => { if (st.state === 'live' && st.ctx && st.ctx.state !== 'running') resumeCtx(); };
+  document.addEventListener('pointerdown', tapResume, true);
+  document.addEventListener('touchend', tapResume, true);
+
+  function teardown(closeCtx, keepRec) {
+    if (!keepRec) clearInterval(watchTimer);
     try { st.stream && st.stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
     try { st.src && st.src.disconnect(); } catch (e) {}
     try { st.core && st.core.node.disconnect(); } catch (e) {}
     try { st.outGain && st.outGain.disconnect(); } catch (e) {}
-    st.stream = st.src = st.core = st.fx = st.outGain = st.monitorGain = st.recDest = st.inAnalyser = st.outAnalyser = null;
+    try { st.monitorGain && st.monitorGain.disconnect(); } catch (e) {}
+    st.stream = st.src = st.core = st.fx = st.outGain = st.monitorGain = st.inAnalyser = st.outAnalyser = null;
+    if (!keepRec) st.recDest = null;
     st.f0 = 0; st.level = 0;
     if (closeCtx && st.ctx) { try { st.ctx.suspend(); } catch (e) {} }
   }
@@ -195,6 +269,7 @@ registerProcessor('voxm-core', VoxmProcessor);`;
   function stop() {
     if (st.recorder && st.recorder.state === 'recording') { try { st.recorder.stop(); } catch (e) {} }
     teardown(true);
+    st.needsResume = false;
     st.state = 'off'; emit();
   }
 

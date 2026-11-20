@@ -1,6 +1,9 @@
 /* VOXM DSP core — shared by the AudioWorklet, the ScriptProcessor fallback and the Node tests.
  * TD-PSOLA style pitch / formant shifter with phase-coherent source marks,
- * monotone "robot" mode, ring modulation, and a direct/processed crossfade.
+ * monotone "robot" mode, hard pitch snap ("kerokero"), vibrato, ring modulation, tremolo, bit crusher,
+ * a direct/processed crossfade and a zero-latency output limiter.
+ * Latency: only the pitch/formant path has a fixed delay D (≈2 periods of the lowest voice, ~25 ms);
+ * ring / tremolo / crusher-only voices run with zero added delay.
  */
 function voxYin(buf, mask, end, ds, win, tmin, tmax, scratch) {
   // Downsample (box filter) the last win*ds samples ending at `end` into scratch.
@@ -55,11 +58,12 @@ class VoxCore {
     this.inBuf = new Float32Array(this.N);
     this.outBuf = new Float32Array(this.N);
     this.w = 0; this.o = 0;
-    this.fmin = 70; this.fmax = 520;
+    this.fmin = 80; this.fmax = 560;
     this.formantMin = 0.72;
     this.Pmax = Math.ceil(sr / this.fmin);
-    this.HoutMax = Math.ceil(this.Pmax / this.formantMin) + 2;
-    this.D = this.HoutMax + this.Pmax + 32; // fixed processing delay (samples)
+    // grains are capped at one (longest) period on the output side, so the delay is ~2 periods, not 2.4
+    this.HoutMax = this.Pmax + 2;
+    this.D = this.HoutMax + this.Pmax + 16; // fixed processing delay (samples)
     this.ds = Math.max(1, Math.round(sr / 11025));
     const srd = sr / this.ds;
     this.tmin = Math.floor(srd / this.fmax);
@@ -69,18 +73,33 @@ class VoxCore {
     this.detEvery = 384; this.detCount = 0;
     this.period = sr / 140; this.voiced = false; this.f0 = 0; this.level = 0;
     this.srcMark = 0; this.nextOut = 0;
-    this.ringPhase = 0;
+    this.ringPhase = 0; this.vibPhase = 0; this.tremPhase = 0;
+    this.crushHold = 0; this.crushVal = 0;
     this.inE = 1e-6; this.outE = 1e-6; this.agc = 1; // loudness match for the processed path
     this.agcA = 1 / (0.25 * sr);
     this.mix = 0; // 0 = direct, 1 = processed
-    this.p = { pitch: 1, formant: 1, robotHz: 0, ring: 0, ringHz: 40, active: false };
+    this.p = { pitch: 1, formant: 1, robotHz: 0, ring: 0, ringHz: 40, vib: 0, vibHz: 5.5, tune: 0, trem: 0, tremHz: 6, crush: 0, active: false };
+    this.faults = 0;
+  }
+  // clear all signal state (used to recover if anything ever goes non-finite)
+  reset() {
+    this.inBuf.fill(0); this.outBuf.fill(0);
+    this.w = 0; this.o = 0; this.srcMark = 0; this.nextOut = 0;
+    this.inE = 1e-6; this.outE = 1e-6; this.agc = 1; this.mix = 0;
+    this.period = this.sr / 140; this.voiced = false; this.f0 = 0;
+    this.crushVal = 0; this.crushHold = 0;
+    this.faults++;
   }
   set(params) {
     Object.assign(this.p, params);
     const p = this.p;
     p.pitch = Math.min(2.6, Math.max(0.4, +p.pitch || 1));
     p.formant = Math.min(1.5, Math.max(this.formantMin, +p.formant || 1));
-    p.active = Math.abs(p.pitch - 1) > 0.004 || Math.abs(p.formant - 1) > 0.004 || p.robotHz > 0;
+    const num = (v, lo, hi, d) => { v = +v; return v === v ? Math.min(hi, Math.max(lo, v)) : d; };
+    p.robotHz = num(p.robotHz, 0, 400, 0); p.ring = num(p.ring, 0, 1, 0); p.ringHz = num(p.ringHz, 1, 2000, 40);
+    p.vib = num(p.vib, 0, 4, 0); p.vibHz = num(p.vibHz, 0.5, 14, 5.5); p.tune = num(p.tune, 0, 1, 0);
+    p.trem = num(p.trem, 0, 1, 0); p.tremHz = num(p.tremHz, 0.5, 30, 6); p.crush = num(p.crush, 0, 1, 0);
+    p.active = Math.abs(p.pitch - 1) > 0.004 || Math.abs(p.formant - 1) > 0.004 || p.robotHz > 0 || p.vib > 0.01 || p.tune > 0.01;
   }
   latencySamples() { return this.p.active ? this.D : 0; }
   detect() {
@@ -99,7 +118,20 @@ class VoxCore {
     const p = this.p, sr = this.sr;
     const voiced = this.voiced;
     const P = voiced ? this.period : sr * 0.0065;
-    const hopOut = p.robotHz > 0 ? sr / p.robotHz : P / p.pitch;
+    let ratio = p.pitch;
+    if (p.vib > 0) ratio *= Math.pow(2, (p.vib * Math.sin(this.vibPhase)) / 12);
+    let hopOut;
+    if (p.robotHz > 0) hopOut = sr / p.robotHz;
+    else if (p.tune > 0 && voiced) {
+      // snap the output pitch to the nearest semitone (hard tune), blended by `tune`
+      const fo = (sr / P) * ratio;
+      const semi = 12 * Math.log2(fo / 440);
+      const snapped = 440 * Math.pow(2, Math.round(semi) / 12);
+      hopOut = sr / (fo + (snapped - fo) * p.tune);
+    } else hopOut = P / ratio;
+    if (!(hopOut > 4)) hopOut = P;
+    this.vibPhase += (2 * Math.PI * p.vibHz * hopOut) / sr;
+    if (this.vibPhase > 6.283185307179586) this.vibPhase -= 6.283185307179586;
     const cOut = Math.round(this.nextOut) + this.HoutMax;
     const target = cOut - this.D;
     if (voiced) {
@@ -131,6 +163,10 @@ class VoxCore {
     const target = p.active ? 1 : 0;
     const mixStep = 1 / (0.03 * this.sr);
     const ringInc = (2 * Math.PI * p.ringHz) / this.sr;
+    const tremInc = (2 * Math.PI * p.tremHz) / this.sr;
+    const holdN = 1 + Math.round(p.crush * 7 * (this.sr / 48000));
+    const q = Math.pow(2, 15 - p.crush * 11.5);
+    const crushMix = Math.min(1, p.crush * 2.5);
     for (let i = 0; i < n; i++) {
       const x = input[i];
       this.inBuf[this.w & mask] = x;
@@ -143,7 +179,7 @@ class VoxCore {
       this.outBuf[idx] = 0;
       this.o++;
       // delayed input energy vs processed energy -> slow gain correction
-      const xd = this.inBuf[(this.w - 1 - this.D) & mask];
+      const xd = this.inBuf[(this.w - 1 - (p.active ? this.D : 0)) & mask];
       this.inE += (xd * xd - this.inE) * this.agcA;
       this.outE += (y * y - this.outE) * this.agcA;
       if (this.inE > 2e-6) {
@@ -160,6 +196,20 @@ class VoxCore {
         if (this.ringPhase > 6.283185307179586) this.ringPhase -= 6.283185307179586;
         v = v * (1 - p.ring) + v * Math.sin(this.ringPhase) * p.ring * 1.6;
       }
+      if (p.trem > 0) {
+        this.tremPhase += tremInc;
+        if (this.tremPhase > 6.283185307179586) this.tremPhase -= 6.283185307179586;
+        v *= 1 - p.trem * (0.5 + 0.5 * Math.sin(this.tremPhase));
+      }
+      if (p.crush > 0) {
+        // sample-and-hold + bit reduction (8-bit game sound)
+        if (--this.crushHold <= 0) { this.crushHold = holdN; this.crushVal = Math.round(v * q) / q; }
+        v = v * (1 - crushMix) + this.crushVal * crushMix;
+      }
+      // zero-latency soft limiter (replaces a look-ahead compressor)
+      const a = v < 0 ? -v : v;
+      if (a > 0.7) v = (v < 0 ? -1 : 1) * (0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3));
+      if (v !== v || v > 4 || v < -4) { this.reset(); output.fill(0); return; }
       output[i] = v;
     }
   }

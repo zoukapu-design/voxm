@@ -90,6 +90,33 @@ for (const ratio of [1.5, 0.75]) {
   let pk = 0; for (const v of out) pk = Math.max(pk, Math.abs(v));
   check('peak level stays bounded', pk, 0.6, 0.45);
 }
+// lower formant (deeper timbre) still tracks
+{
+  const r = A.analyze(runCore(user, sr, { pitch: 1, formant: 0.84 }).out, sr);
+  check('formant x0.84 keeps F0', r.f0, 120, 6);
+  check('formant x0.84 → warp', A.formantWarp(r, base).ratio, 0.84, 0.07);
+}
+// hard tune: 126 Hz (between B2 and C3) snaps to a semitone
+{
+  const r = A.analyze(runCore(synthVoice(sr, 3, 126, 1.0, 5), sr, { pitch: 1, formant: 1, tune: 1 }).out, sr);
+  const semi = 12 * Math.log2(r.f0 / 440);
+  check('hard tune lands on a semitone', Math.abs(semi - Math.round(semi)), 0, 0.12);
+}
+// zero-latency effects: crusher / tremolo / ring do not delay the signal
+{
+  const c = new VoxCore(sr); c.set({ pitch: 1, formant: 1, crush: 0.7, trem: 0.5 });
+  check('crusher/tremolo add no delay', c.latencySamples(), 0, 0);
+}
+// recovers from a non-finite sample instead of going silent forever
+{
+  const c = new VoxCore(sr); c.set({ pitch: 1.4, formant: 1 });
+  const blk = new Float32Array(128), out = new Float32Array(128);
+  for (let k = 0; k < 50; k++) { for (let i = 0; i < 128; i++) blk[i] = Math.sin(i * 0.1) * 0.3; c.process(blk, out); }
+  blk[5] = NaN; c.process(blk, out);
+  let alive = 0;
+  for (let k = 0; k < 200; k++) { for (let i = 0; i < 128; i++) blk[i] = Math.sin((k * 128 + i) * 0.05) * 0.3; c.process(blk, out); for (const v of out) if (Number.isFinite(v) && Math.abs(v) > 0.01) alive++; }
+  check('recovers after a NaN input (non-silent output)', alive > 1000 ? 1 : 0, 1, 0);
+}
 // CPU budget: seconds of audio processed per second
 {
   const t = Date.now();

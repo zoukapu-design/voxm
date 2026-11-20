@@ -174,7 +174,7 @@ function editCase(k, initialIds) {
 
 /* ---- "similar voices" grouping: explainable rule-based clusters on the voice profile ---- */
 const VOICE_GROUPS = [
-  { key: 'machine', name: 'メカ・電子ボイス', color: '#7fdcff', test: (p) => p.robotHz > 0 || p.ring >= 0.3 },
+  { key: 'machine', name: 'メカ・電子ボイス', color: '#7fdcff', test: (p) => p.robotHz > 0 || p.ring >= 0.3 || p.crush > 0.3 || p.tune > 0.5 },
   { key: 'space', name: '響く・幻想ボイス', color: '#8fa2ff', test: (p) => p.reverb + p.echo + p.chorus >= 0.55 },
   { key: 'lofi', name: 'ローファイ・無線', color: '#c3ff6b', test: (p) => p.lowcut >= 300 || p.highcut <= 5000 || p.drive >= 0.4 },
   { key: 'high', name: '高い声', color: '#ff7ab6', test: (p) => p.pitch >= 2 },

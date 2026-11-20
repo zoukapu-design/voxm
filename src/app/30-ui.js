@@ -112,7 +112,7 @@ function meterLoop() {
 function openSettings() {
   const row = (key, title, sub) => `<div class="list-item"><div class="grow"><b style="font-size:14px">${title}</b><div class="small muted" style="margin-top:3px;line-height:1.5">${sub}</div></div><button class="switch ${S[key] ? 'on' : ''}" data-sw="${key}" aria-label="${title}"></button></div>`;
   openSheet('設定', `
-    ${row('safeMode', 'ハウリング防止モード', 'スピーカーで聴くときはON。イヤホン使用時にOFFにすると音質が上がります（次回の変換開始時に反映）。')}
+    ${row('safeMode', 'ハウリング防止モード', 'スピーカーで聴くときはON。イヤホン使用時はOFFにすると遅延が減り、音質も上がります（次回の変換開始時に反映）。')}
     ${row('noiseSup', 'ノイズ抑制', '周りの雑音を減らします。声の特徴も少し丸くなります。')}
     ${row('ticks', '操作音', 'メモリの回転・装着時の小さな効果音。')}
     ${row('reduceMotion', '動きを減らす', 'アニメーションを控えめにします。')}

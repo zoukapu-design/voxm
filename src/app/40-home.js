@@ -298,7 +298,14 @@ function bindHome() {
 
   window.addEventListener('resize', fitStage);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', fitStage);
-  VoxEngine.onChange(() => { updateDriver(); updateLivePill(); });
+  let resumeToast = false, prevState = 'off';
+  VoxEngine.onChange((st) => {
+    updateDriver(); updateLivePill();
+    if (st.needsResume && !resumeToast) { resumeToast = true; toast('音が一時停止しました。画面をタップすると再開します'); }
+    if (!st.needsResume) resumeToast = false;
+    if (prevState === 'live' && st.state === 'error' && st.error) toast(st.error); // lost mid-session
+    prevState = st.state;
+  });
   requestAnimationFrame(screenLoop);
 }
 

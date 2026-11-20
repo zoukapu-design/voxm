@@ -3,7 +3,8 @@ const ASSET = window.VOXM_ASSETS || {};
 const COLORS = ['#a487ff', '#7fdcff', '#ff7ab6', '#ffb86b', '#5fe0a8', '#ff6b81', '#c3ff6b', '#8fa2ff'];
 
 // Voice profile parameters (all optional): pitch/formant in semitones, robotHz, ring 0-1, ringHz,
-// lowcut/highcut Hz, bass/presence dB, drive/chorus/echo/reverb 0-1
+// lowcut/highcut Hz, bass/presence dB, drive/chorus/echo/reverb 0-1,
+// vib (semitones) + vibHz, tune 0-1 (snap to semitones), trem 0-1 + tremHz, crush 0-1 (8-bit)
 const BUILTIN_CHIPS = [
   { id: 'c_friendA', name: '友達Aの声', kind: 'friend', tag: 'FRIEND', photo: 'friendA', color: '#ffb86b', demo: true, profile: { pitch: 3, formant: 1.6, presence: 1.5 } },
   { id: 'c_friendB', name: '友達Bの声', kind: 'friend', tag: 'FRIEND', photo: 'friendB', color: '#7fdcff', demo: true, profile: { pitch: -2.5, formant: -1, bass: 1.5 } },
@@ -14,11 +15,24 @@ const BUILTIN_CHIPS = [
   { id: 'c_angel', name: '天使', kind: 'character', tag: 'HOLY', art: 'angel', color: '#ffe08a', profile: { pitch: 4, formant: 1.5, reverb: 0.55, chorus: 0.35, presence: 2 } },
   { id: 'c_helium', name: 'ヘリウム', kind: 'fx', tag: 'HIGH TONE', art: 'helium', color: '#ff7ab6', profile: { pitch: 9, formant: 5 } },
   { id: 'c_radio', name: 'ラジオ無線', kind: 'fx', tag: 'VINTAGE', art: 'radio', color: '#c3ff6b', profile: { lowcut: 520, highcut: 3000, drive: 0.25, presence: 5 } },
+  { id: 'c_hamster', name: 'ハムスター', kind: 'character', tag: 'TINY', art: 'hamster', color: '#ffc9a3', profile: { pitch: 10, formant: 5.5, vib: 0.25, vibHz: 7 } },
+  { id: 'c_giant', name: '巨人', kind: 'character', tag: 'TITAN', art: 'giant', color: '#b08cff', profile: { pitch: -10, formant: -4.5, bass: 4, reverb: 0.45 } },
+  { id: 'c_dragon', name: 'ドラゴン', kind: 'character', tag: 'MYTHIC', art: 'dragon', color: '#ff8a5c', profile: { pitch: -8, formant: -3, ring: 0.25, ringHz: 22, drive: 0.45, bass: 5, reverb: 0.3 } },
+  { id: 'c_ufo', name: 'UFO', kind: 'character', tag: 'UNKNOWN', art: 'ufo', color: '#6bffd8', profile: { pitch: 3, vib: 2.5, vibHz: 3, ring: 0.35, ringHz: 18, echo: 0.35 } },
+  { id: 'c_elder', name: 'おじいちゃん', kind: 'character', tag: 'ELDER', art: 'elder', color: '#d9c7a1', profile: { pitch: -3, formant: -1, vib: 0.45, vibHz: 5.5, lowcut: 150, highcut: 6000, drive: 0.12 } },
+  { id: 'c_kid', name: 'キッズ', kind: 'character', tag: 'KIDS', art: 'kid', color: '#7fe3ff', profile: { pitch: 6, formant: 3.5, presence: 1 } },
+  { id: 'c_8bit', name: '8BIT', kind: 'fx', tag: 'RETRO GAME', art: 'game', color: '#ff5ce1', profile: { crush: 0.75, pitch: 2, highcut: 7000 } },
+  { id: 'c_kero', name: 'ケロケロ', kind: 'fx', tag: 'HYPER POP', art: 'note', color: '#9dff5c', profile: { tune: 1, pitch: 1, chorus: 0.25, reverb: 0.2 } },
+  { id: 'c_phone', name: '電話', kind: 'fx', tag: 'CALL', art: 'phone', color: '#ffe066', profile: { lowcut: 340, highcut: 3400, drive: 0.18, presence: 4 } },
+  { id: 'c_mega', name: 'メガホン', kind: 'fx', tag: 'LOUD', art: 'megaphone', color: '#ff9f43', profile: { lowcut: 600, highcut: 4200, drive: 0.55, presence: 6, echo: 0.15 } },
+  { id: 'c_cave', name: '洞くつ', kind: 'fx', tag: 'ECHO', art: 'cave', color: '#5ca8ff', profile: { echo: 0.65, reverb: 0.55, lowcut: 120 } },
 ];
+// built-ins that shipped before the newest additions (used to slot new chips into existing saved cases once)
+const BUILTIN_V1 = ['c_friendA', 'c_friendB', 'c_android', 'c_nebula', 'c_phantom', 'c_monster', 'c_angel', 'c_helium', 'c_radio'];
 const BUILTIN_CASES = [
   { id: 'k_friends', name: 'フレンズ', color: '#ffb86b', chipIds: ['c_friendA', 'c_friendB'] },
-  { id: 'k_chara', name: 'キャラクター', color: '#a487ff', chipIds: ['c_android', 'c_nebula', 'c_phantom', 'c_monster', 'c_angel'] },
-  { id: 'k_fx', name: 'エフェクト', color: '#ff7ab6', chipIds: ['c_helium', 'c_radio'] },
+  { id: 'k_chara', name: 'キャラクター', color: '#a487ff', chipIds: ['c_android', 'c_nebula', 'c_phantom', 'c_monster', 'c_angel', 'c_hamster', 'c_giant', 'c_dragon', 'c_ufo', 'c_elder', 'c_kid'] },
+  { id: 'k_fx', name: 'エフェクト', color: '#ff7ab6', chipIds: ['c_helium', 'c_radio', 'c_8bit', 'c_kero', 'c_phone', 'c_mega', 'c_cave'] },
 ];
 const KIND_LABEL = { friend: '友達', self: '自分', character: 'キャラ', fx: 'エフェクト' };
 const KIND_TAG = { friend: 'FRIEND', self: 'MY VOICE', character: 'CHARACTER', fx: 'EFFECT' };
@@ -33,6 +47,10 @@ const FX_LIB = [
   { id: 'drive', name: 'DRIVE', sub: 'ガサついた迫力', icon: 'drive', color: '#ff6b81', p: { drive: 0.55, bass: 3 } },
   { id: 'high', name: 'HIGH', sub: '高く・小さく', icon: 'up', color: '#ffe08a', p: { pitch: 5, formant: 2.5 } },
   { id: 'low', name: 'LOW', sub: '低く・大きく', icon: 'downArrow', color: '#ffb86b', p: { pitch: -5, formant: -2.5 } },
+  { id: 'vibrato', name: 'VIBRATO', sub: 'ゆらゆら声', icon: 'wave', color: '#6bffd8', p: { vib: 0.9, vibHz: 6 } },
+  { id: 'tune', name: 'KERO', sub: '音程カチッと補正', icon: 'sparkle', color: '#9dff5c', p: { tune: 1 } },
+  { id: '8bit', name: '8BIT', sub: 'ゲーム機の音', icon: 'bolt', color: '#ff5ce1', p: { crush: 0.7 } },
+  { id: 'trem', name: 'TREMOLO', sub: 'ふるえる音量', icon: 'broadcast', color: '#ffe066', p: { trem: 0.65, tremHz: 8 } },
 ];
 
 const SAMPLE_SCRIPT = 'こんにちは。今日はいい天気ですね。あいうえお、かきくけこ。私の声をボイスメモリに記録します。好きな食べ物はカレーライスで、休みの日は散歩をしています。ありがとう、またね。';
@@ -68,6 +86,15 @@ async function loadAll() {
   ];
   S.removedBuiltins = [...removed];
   S.cases = cases && cases.length ? cases.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : BUILTIN_CASES.map((c, i) => Object.assign({ order: i, createdAt: 0 }, c));
+  // new built-in chips join their default case once (saved cases from older versions don't list them yet)
+  const seen = new Set((kv && kv.seenBuiltins) || (cases && cases.length ? BUILTIN_V1 : BUILTIN_CHIPS.map((c) => c.id)));
+  for (const bc of BUILTIN_CASES) {
+    const k = S.cases.find((c) => c.id === bc.id); if (!k) continue;
+    const add = bc.chipIds.filter((id) => !seen.has(id) && !k.chipIds.includes(id));
+    if (add.length) { k.chipIds.push(...add); saveCase(k); }
+  }
+  S.seenBuiltins = BUILTIN_CHIPS.map((c) => c.id);
+  if (!kv || !kv.seenBuiltins) saveSettings();
   if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) if (k in kv) S[k] = kv[k];
   if (kv && !kv.slots && kv.insertedId) S.slots = [null, kv.insertedId, null]; // single-slot era
   if (!chipById(S.selectedId)) S.selectedId = S.chips[0]?.id || null;
@@ -82,6 +109,7 @@ function saveSettings() {
     const kv = {};
     for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) kv[k] = S[k];
     kv.removedBuiltins = S.removedBuiltins || [];
+    kv.seenBuiltins = S.seenBuiltins || BUILTIN_CHIPS.map((c) => c.id);
     VoxStore.put('kv', 'settings', kv);
   }, 200);
 }
