@@ -4,7 +4,7 @@ const STEP = 104;
 // The deck faces the viewer; one small slit sits exactly under the wheel's centre card, so a chip drops straight in.
 // Inserted chips are drawn fully inside (absorbed) and show up as icons on the deck's tilted display panel (up to 3).
 // Tapping an icon sends that chip back up out of the slit, where it can be pulled out.
-const DK = { W: 350, H: 236, R: 60, plateZ: 34, slitY: 46, slitW: 98, panelY: 214, panelH: 92 };
+const DK = { W: 350, H: 236, R: 60, plateZ: 34, slitY: 46, slitW: 98, panelY: 212, panelH: 84 };
 const CARD = { left: 130, w: 130, h: 180 };
 const SEAT = { k: 0.6, show: 86 }; // chip size in the slit, and how much stays above it when it comes back up
 const SLOT_X = 195;
@@ -70,11 +70,9 @@ function buildDeck() {
   // display panel: tilts up from the front of the plate toward the viewer
   top.style.transformStyle = 'preserve-3d';
   const ph = DK.panelH;
-  dEl('face dk-pbase', `inset:auto;left:28px;top:${DK.panelY - 12}px;width:${w - 56}px;height:14px;border-radius:7px`, top);
-  const panel = dEl('face dk-panel', `inset:auto;left:30px;top:${DK.panelY - ph}px;width:${w - 60}px;height:${ph}px;border-radius:16px;transform-origin:50% 100%;transform:rotateX(-58deg)`, top);
-  panel.innerHTML = `<div class="dp-top"><span class="dk-status" id="dkStatus">VOICE CORE · STANDBY</span><span class="dk-icons">${DK_ICONS.map(([k, d]) => `<svg viewBox="0 0 24 24" class="${k}" data-ic="${k}">${d}</svg>`).join('')}</span></div>
-    <div class="dp-cells">${[0, 1, 2].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div><div class="dp-tx"><b></b><span>EMPTY</span></div></div>`).join('')}</div>
-    <div class="dp-bot"><span class="dk-info" id="dkInfo">—</span><span class="dk-vol" id="dkVol"><i id="dkVolFill"></i><b id="dkVolKnob"></b></span></div>`;
+  dEl('face dk-pbase', `inset:auto;left:40px;top:${DK.panelY - 5}px;width:${w - 80}px;height:7px;border-radius:4px`, top);
+  const panel = dEl('face dk-panel', `inset:auto;left:44px;top:${DK.panelY - ph}px;width:${w - 88}px;height:${ph}px;border-radius:14px;transform-origin:50% 100%;transform:rotateX(-58deg)`, top);
+  panel.innerHTML = `<i class="dp-sheen"></i><div class="dp-cells">${[0, 1, 2].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div></div>`).join('')}</div>`;
 }
 
 RENDER.home = () => {
@@ -118,8 +116,9 @@ function placeHits() {
     }
   }
   const hit = $('#hitVol'), vol = $('#dkVol');
+  if (hit) hit.style.display = vol ? '' : 'none';
   if (hit && vol) { const r = stageRect(vol); const pad = 14; Object.assign(hit.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' }); }
-  $$('.hit-cell').forEach((hc) => { const c = $(`#deck .dp-cell[data-cell="${hc.dataset.cell}"]`); if (!c) return; const r = stageRect(c); Object.assign(hc.style, { left: r.left - 3 + 'px', top: r.top - 6 + 'px', width: r.width + 6 + 'px', height: r.height + 12 + 'px' }); });
+  $$('.hit-cell').forEach((hc) => { const c = $(`#deck .dp-cell[data-cell="${hc.dataset.cell}"]`); if (!c) return; const r = stageRect(c); Object.assign(hc.style, { left: r.left - 4 + 'px', top: r.top - 10 + 'px', width: r.width + 8 + 'px', height: r.height + 20 + 'px' }); });
   drawGuide();
 }
 const restTop = () => SLIT_Y - SEAT.show;
@@ -606,9 +605,7 @@ function updateDriver() {
       cell.dataset.key = key;
       cell.classList.toggle('on', !!c);
       cell.style.setProperty('--c', c ? c.color : '#a487ff');
-      cell.querySelector('.dp-ic').innerHTML = c ? chipPhotoHTML(c) : `<i>0${i + 1}</i>`;
-      cell.querySelector('.dp-tx b').textContent = c ? c.name : '';
-      cell.querySelector('.dp-tx span').textContent = c ? (c.profile && c.profile.robotHz ? 'ROBO' : 'PITCH ' + signed((c.profile || {}).pitch || 0, 1)) : 'EMPTY';
+      cell.querySelector('.dp-ic').innerHTML = c ? chipPhotoHTML(c) : '';
     }
   });
   $$('.hit-cell').forEach((b) => { b.disabled = !S.slots[+b.dataset.cell]; });
