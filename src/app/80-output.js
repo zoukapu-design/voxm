@@ -135,8 +135,7 @@ async function convertFile(file) {
     const clip = samples.length > max ? samples.subarray(0, max) : samples;
     const out = await VoxEngine.renderOffline(clip, sampleRate, combinedParams());
     const blob = VoxEngine.encodeWav(out);
-    const chip = chipById(S.insertedId);
-    const rec = await saveRecording({ blob, mime: 'audio/wav', seconds: out.duration }, 'audio', (chip ? chip.name : '素の声') + '（ファイル変換）');
+    const rec = await saveRecording({ blob, mime: 'audio/wav', seconds: out.duration }, 'audio', (seatedName() || '素の声') + '（ファイル変換）');
     playBlob(blob);
     toast(`変換しました${samples.length > max ? '（先頭90秒）' : ''}`);
     if (S.tab === 'output') RENDER.output();
@@ -147,7 +146,7 @@ async function convertFile(file) {
 /* camera mode */
 async function openCamera() {
   if (VoxEngine.status.state !== 'live') {
-    if (!S.insertedId && W.list.length) { S.insertedId = W.list[Math.max(0, centerIndex())].id; syncSlotChip(); applyParams(); }
+    if (!seatedChips().length && W.list.length) { S.slots[1] = W.list[Math.max(0, centerIndex())].id; syncSlotChips(); applyParams(); }
     VoxEngine.setParams(combinedParams()); VoxEngine.status.monitor = false; VoxEngine.status.volume = S.volume;
     await VoxEngine.start({ safeMode: S.safeMode, noiseSuppression: S.noiseSup });
     if (VoxEngine.status.state !== 'live') { showMicHelp(); return; }
@@ -156,11 +155,11 @@ async function openCamera() {
   try { vstream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: false }); }
   catch (e) { toast(inFrame ? 'この画面ではカメラが使えません。公開版で開いてください' : 'カメラを使えません（設定で許可してください）', 3500); return; }
   const prevMon = S.monitor; VoxEngine.setMonitor(false);
-  const chip = chipById(S.insertedId);
+  const chip = seatedChips()[0];
   const ov = document.createElement('div');
   ov.className = 'cam';
   ov.innerHTML = `<video autoplay playsinline muted></video>
-    <div class="cam-top"><div class="cam-tag">${chip ? chipHTML(chip, { noBadge: true }) : ''}<span>${esc(chip ? chip.name : '素の声')}</span></div><span class="timer" hidden>0:00</span><button class="icon-btn" data-x aria-label="閉じる">${ICON.close}</button></div>
+    <div class="cam-top"><div class="cam-tag">${chip ? chipHTML(chip, { noBadge: true }) : ''}<span>${esc(seatedName() || '素の声')}</span></div><span class="timer" hidden>0:00</span><button class="icon-btn" data-x aria-label="閉じる">${ICON.close}</button></div>
     <div class="cam-bot"><span style="width:44px"></span><button class="shutter" aria-label="録画"><i></i></button><span style="width:44px"></span></div>`;
   document.body.append(ov);
   const v = ov.querySelector('video'); v.srcObject = vstream;

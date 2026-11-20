@@ -54,7 +54,7 @@ async def main():
             await p.wait_for_timeout(150); await p.screenshot(path=f'{OUT}/flow2_dragging.png')
             await p.mouse.up(); await p.wait_for_timeout(300); await p.screenshot(path=f'{OUT}/flow3_inserting.png')
             await p.wait_for_timeout(700)
-            ins = await p.evaluate('VOXM_DEBUG.S.insertedId'); print('inserted:', ins)
+            ins = await p.evaluate('JSON.stringify(VOXM_DEBUG.S.slots)'); print('inserted:', ins)
             await p.screenshot(path=f'{OUT}/flow4_inserted.png')
             # power on (fake mic)
             await p.click('#kConv'); await p.wait_for_timeout(2500)
@@ -67,7 +67,7 @@ async def main():
             # tap another card while inserted -> swap
             await p.mouse.move(cx, cy); await p.mouse.down(); await p.mouse.move(cx + 130, cy, steps=8); await p.mouse.up(); await p.wait_for_timeout(900)
             await p.click('.wcard.center'); await p.wait_for_timeout(1800)
-            print('swapped to:', await p.evaluate('VOXM_DEBUG.S.insertedId'))
+            print('swapped to:', await p.evaluate('JSON.stringify(VOXM_DEBUG.S.slots)'))
             await p.screenshot(path=f'{OUT}/flow6_swapped.png')
             # FX
             await p.click('.tab[data-tab=fx]'); await p.wait_for_timeout(300)

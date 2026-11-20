@@ -1,12 +1,12 @@
 /* ===== FX LAB ===== */
 RENDER.fx = () => {
   const page = $('#page-fx');
-  const chip = chipById(S.insertedId);
+  const seatedNm = seatedName('・');
   const slots = [0, 1, 2].map((i) => S.fx[i]);
   page.innerHTML = `
     <div class="eyebrow">FX LAB · 3 SLOT RACK</div>
     <h1 class="h1">FX工房</h1>
-    <p class="lead">装着中のメモリ${chip ? `「<b style="color:#fff">${esc(chip.name)}</b>」` : '（未装着）'}に、最大3つのエフェクトを重ねがけできます。変換中はすぐに反映されます。</p>
+    <p class="lead">装着中のメモリ${seatedNm ? `「<b style="color:#fff">${esc(seatedNm)}</b>」` : '（未装着）'}に、最大3つのエフェクトを重ねがけできます。変換中はすぐに反映されます。</p>
     <div class="rack">${slots.map((l, i) => {
       if (!l) return `<div class="rack-slot empty">SLOT ${i + 1} — 下のエフェクトをタップ</div>`;
       const fx = FX_LIB.find((f) => f.id === l.id);

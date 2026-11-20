@@ -76,7 +76,8 @@ main { flex: 1; position: relative; min-height: 0; }
 .tab.on::before { content: ''; position: absolute; inset: 2px 6px; border-radius: 14px; z-index: -1; background: linear-gradient(180deg, rgba(164,135,255,.28), rgba(123,92,255,.12)); border: 1px solid rgba(164,135,255,.38); box-shadow: 0 0 22px -6px var(--glow), inset 0 1px 0 rgba(255,255,255,.12); }
 
 /* ---------- home stage (fixed design box, scaled to fit) ---------- */
-.stage-host { position: absolute; inset: 0; overflow: hidden; }
+.stage-host { position: absolute; inset: 0; overflow: hidden; overflow: clip; }
+.slot-layer, .wheel { overflow: clip; }
 .stage { position: absolute; left: 50%; top: 0; width: 390px; height: 640px; transform-origin: 50% 0; transform: translateX(-50%) scale(var(--s, 1)); }
 .case-bar { position: absolute; top: 6px; left: 18px; right: 18px; height: 28px; display: flex; align-items: center; justify-content: space-between; z-index: 30; }
 .case-pill { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px 0 8px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.04); font-size: 12px; font-weight: 700; }
@@ -149,10 +150,10 @@ main { flex: 1; position: relative; min-height: 0; }
 .chip .dim { position: absolute; inset: 0; background: #05060a; opacity: 0; pointer-events: none; z-index: 4; clip-path: var(--notch); }
 
 /* ---------- HOLO DECK (front-facing, straight insertion) ---------- */
-.deck-floor { position: absolute; left: 40px; top: 470px; width: 310px; height: 110px; border-radius: 50%; pointer-events: none;
+.deck-floor { position: absolute; left: 25px; top: 466px; width: 340px; height: 110px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--tint) calc(45% + var(--lv, 0) * 50%), transparent), color-mix(in srgb, var(--tint) 10%, transparent) 60%, transparent); filter: blur(14px); }
-.deck-scene { position: absolute; left: 30px; top: 380px; width: 330px; height: 184px; perspective: 1000px; perspective-origin: 50% -60%; z-index: 15; pointer-events: none; }
-.deck-obj { position: absolute; left: 0; top: 0; width: 330px; height: 184px; transform-style: preserve-3d; transform: rotateX(62deg); }
+.deck-scene { position: absolute; left: 20px; top: 382px; width: 350px; height: 176px; perspective: 1000px; perspective-origin: 50% -60%; z-index: 15; pointer-events: none; }
+.deck-obj { position: absolute; left: 0; top: 0; width: 350px; height: 176px; transform-style: preserve-3d; transform: rotateX(62deg); }
 .deck-obj.thunk { animation: deckThunk .34s cubic-bezier(.3,.7,.4,1); }
 @keyframes deckThunk { 30% { transform: rotateX(62deg) translateZ(-4px); } 65% { transform: rotateX(62deg) translateZ(1px); } }
 .deck-obj .L, .deck-obj .face { position: absolute; }
@@ -162,18 +163,31 @@ main { flex: 1; position: relative; min-height: 0; }
   -webkit-mask-image: radial-gradient(closest-side, #000 25%, transparent 100%); mask-image: radial-gradient(closest-side, #000 25%, transparent 100%); }
 .gaprim { transition: border-color .4s; }
 .deck.live .gaprim { border-color: rgba(235,225,255,.85) !important; }
-.dk-slit { background: #0b0915; box-shadow: inset 0 2px 3px #000, 0 0 0 1px rgba(200,180,255,.7), 0 0 12px rgba(200,180,255,.8); transition: box-shadow .3s; }
+.dk-slit { background: linear-gradient(180deg, #05040a, #120e22); box-shadow: inset 0 2px 3px #000, 0 0 0 1px rgba(200,180,255,.7), 0 0 12px rgba(200,180,255,.7); transition: box-shadow .3s; overflow: hidden; }
+.dk-slit .rail { position: absolute; left: 6px; right: 6px; top: 50%; height: 1px; margin-top: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tint) 80%, #fff) 20%, #fff 50%, color-mix(in srgb, var(--tint) 80%, #fff) 80%, transparent); opacity: .35; transition: opacity .4s; }
+.deck.loaded .dk-slit .rail { opacity: .9; }
+.deck.live .dk-slit .rail { opacity: 1; box-shadow: 0 0 calc(3px + var(--lv, 0) * 8px) var(--tint); }
 .deck.armed .dk-slit { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #fff, 0 0 20px 4px rgba(214,200,255,1); animation: armed .7s ease-in-out infinite; }
 .deck.releasing .dk-slit, .deck.booting .dk-slit { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #fff, 0 0 24px 6px rgba(225,212,255,1); }
 @keyframes armed { 50% { opacity: .55; } }
-.dk-ring { border: 1.5px solid rgba(185,165,255,.35); box-shadow: 0 0 0 4px rgba(185,165,255,.06); transition: all .5s; }
-.deck.loaded .dk-ring { border-color: color-mix(in srgb, var(--tint) 70%, #fff); box-shadow: 0 0 14px var(--tint), inset 0 0 14px color-mix(in srgb, var(--tint) 50%, transparent); }
-.deck.live .dk-ring { box-shadow: 0 0 calc(14px + var(--lv, 0) * 26px) var(--tint), inset 0 0 18px color-mix(in srgb, var(--tint) 60%, transparent); }
+/* per-bay under-glow and LED strip with the bay number */
+.dk-spill { border-radius: 50%; background: radial-gradient(closest-side, var(--bc, #c8b4ff), transparent); opacity: 0; transition: opacity .5s; pointer-events: none; }
+.dk-spill.on { opacity: .5; }
+.deck.live .dk-spill.on { opacity: calc(.45 + var(--lv, 0) * .55); }
+.dk-pt { pointer-events: none; }
+.dk-bay { display: flex; align-items: center; gap: 4px; }
+.dk-bay i { flex: 1; height: 2.4px; border-radius: 2px; background: rgba(140,120,200,.22); transition: background .4s, box-shadow .4s; }
+.dk-bay b { font-family: var(--tech); font-size: 5px; letter-spacing: .1em; color: #b0a6d8; font-weight: 400; transition: color .4s; }
+.dk-bay.on i { background: linear-gradient(90deg, var(--bc), color-mix(in srgb, var(--bc) 40%, #fff)); box-shadow: 0 0 5px var(--bc); }
+.dk-bay.on b { color: color-mix(in srgb, var(--bc) 60%, #2a2050); }
+.dk-bay.flash i { animation: bayFlash .7s ease-out; }
+@keyframes bayFlash { 0% { box-shadow: 0 0 14px 3px #fff; } 100% { box-shadow: 0 0 5px var(--bc); } }
 .dk-ripple { border-radius: 50%; border: 1.5px solid rgba(214,200,255,.95); box-shadow: 0 0 14px rgba(200,180,255,.9); opacity: 0; pointer-events: none; }
 .dk-ui { position: absolute; }
-.dk-ui-l { left: 40px; top: 102px; width: 136px; }
-.dk-ui-r { left: 196px; top: 112px; width: 100px; }
+.dk-ui-l { left: 40px; top: 84px; width: 168px; }
+.dk-ui-r { left: 222px; top: 96px; width: 96px; }
 .dk-status { font-family: var(--tech); font-size: 4.6px; letter-spacing: .32em; color: #8a7fc0; white-space: nowrap; }
+.dk-name.mix { font-size: 11px; font-weight: 400; letter-spacing: .02em; padding-top: 3px; }
 .dk-name { margin-top: 4px; font-family: var(--sora); font-weight: 300; font-size: 15px; letter-spacing: .05em; color: #3d3366; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dk-info { margin-top: 3px; font-family: var(--mono); font-size: 6px; color: #7a6fb0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dk-vol { position: relative; width: 90px; height: 2px; border-radius: 1px; background: rgba(120,100,190,.2); }
@@ -185,11 +199,29 @@ main { flex: 1; position: relative; min-height: 0; }
 .dk-icons svg.rec.on { stroke: #ff6fae; filter: drop-shadow(0 0 3px #ff6fae); }
 /* slot layer: everything above the slit line; its bottom edge IS the slit */
 .slot-layer { position: absolute; left: 0; top: 0; width: 390px; height: 400px; overflow: hidden; z-index: 20; pointer-events: none; }
-.slot-chip { position: absolute; top: 0; width: 130px; height: 180px; font-size: 13px; pointer-events: auto; cursor: pointer; will-change: transform; }
+.slot-chip { position: absolute; left: 0; top: 0; width: 130px; height: 180px; font-size: 13px; pointer-events: auto; cursor: pointer; will-change: transform; transform-origin: 50% 0; }
+.spec { position: absolute; left: 0; width: 390px; height: 180px; pointer-events: none; opacity: 0; transition: opacity .4s; }
+.stage.has-chip .spec { opacity: 1; }
+.bay-holo { position: absolute; left: 0; top: 0; width: 78px; height: 108px; pointer-events: none; transition: opacity .35s; opacity: .55; color: color-mix(in srgb, var(--tint) 55%, #fff); }
+.bay-holo svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bay-holo path { fill: color-mix(in srgb, var(--tint) 8%, transparent); stroke: currentColor; stroke-width: 1; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; opacity: .7; }
+.bay-holo .scan { position: absolute; inset: 0; clip-path: polygon(4px 0, 60px 0, 78px 18px, 78px 100%, 0 100%, 0 4px); background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, transparent) 0 1px, transparent 1px 4px); overflow: hidden; }
+.bay-holo .scan::after { content: ''; position: absolute; left: 0; right: 0; height: 26px; top: -26px; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--tint) 35%, transparent)); animation: holoScan 2.8s linear infinite; }
+.bay-holo b { position: absolute; left: 0; right: 0; top: 30px; text-align: center; font-family: var(--tech); font-size: 15px; font-weight: 400; letter-spacing: .14em; color: #fff; opacity: .7; text-shadow: 0 0 8px var(--tint); }
+.bay-holo span { position: absolute; left: 0; right: 0; top: 52px; text-align: center; font-family: var(--tech); font-size: 6px; letter-spacing: .3em; opacity: .75; }
+.bay-holo.target { opacity: 1; }
+.bay-holo.target path { opacity: 1; stroke-dasharray: none; filter: drop-shadow(0 0 4px var(--tint)); animation: armed 1.4s ease-in-out infinite; }
+.bay-holo.target span { visibility: hidden; }
+.bay-holo.target span::before { content: 'INSERT'; visibility: visible; }
+.bay-holo.off { opacity: 0; }
+.bay-holo.off .scan::after { animation: none; }
+@keyframes holoScan { to { transform: translateY(140px); } }
+.dk-lip { background: rgba(140,120,200,.18); overflow: hidden; }
+.dk-lip i { position: absolute; inset: 0; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--tint), #fff, var(--tint), transparent); transform: scaleX(.12); opacity: .35; transition: opacity .4s; }
+.deck.loaded .dk-lip i { opacity: .8; transform: scaleX(.3); }
+.deck.live .dk-lip i { opacity: 1; transform: scaleX(calc(.2 + var(--lv, 0) * .8)); box-shadow: 0 0 6px var(--tint); }
+.ghost-frame .gslot { font-family: var(--tech); font-size: 15px; letter-spacing: .12em; color: #fff; font-weight: 400; text-shadow: 0 0 10px var(--violet); }
 
-.ring-wrap { position: absolute; left: 75px; width: 240px; height: 240px; transform-origin: 50% 92%; transform: scale(.4, .05); opacity: 0; transition: transform .35s cubic-bezier(.4,0,.6,1), opacity .25s; }
-.ring-wrap canvas { width: 240px; height: 240px; display: block; }
-.stage.has-chip .deck.loaded ~ .slot-layer .ring-wrap, .slot-layer .ring-wrap.on { opacity: 1; transform: none; }
 .hit { position: absolute; z-index: 30; border-radius: 14px; -webkit-tap-highlight-color: transparent; }
 .hit:focus-visible { outline: 2px solid var(--violet); }
 /* controls */

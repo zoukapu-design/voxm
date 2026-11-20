@@ -19,7 +19,7 @@ function renderChipGrid() {
     <div class="search">${ICON.search}<input class="input" id="memQ" placeholder="名前で検索" value="${esc(S.memQuery)}" enterkeyhint="search"></div>
     <div class="chips-row scroll" style="margin-bottom:16px">${kinds.map(([k, l]) => `<button class="pill ${S.memKind === k ? 'on' : ''}" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="chip-grid">
-      ${list.map((c) => `<button class="gcard" data-chip="${c.id}">${c.id === S.insertedId ? '<span class="in-drv">装着中</span>' : ''}${c.favorite ? `<span class="fav">${ICON.star}</span>` : ''}${chipHTML(c)}<span class="cap">${esc(casesOf(c.id).map((k) => k.name).join('・') || 'ケースなし')}</span></button>`).join('')}
+      ${list.map((c) => `<button class="gcard" data-chip="${c.id}">${isSeated(c.id) ? `<span class="in-drv">SLOT ${String(S.slots.indexOf(c.id) + 1).padStart(2, '0')}</span>` : ''}${c.favorite ? `<span class="fav">${ICON.star}</span>` : ''}${chipHTML(c)}<span class="cap">${esc(casesOf(c.id).map((k) => k.name).join('・') || 'ケースなし')}</span></button>`).join('')}
       <button class="gcard add" id="addChip"><span class="addbox">${ICON.plus}</span><span class="cap">新しいメモリ</span></button>
     </div>
     ${list.length ? '' : '<div class="empty">該当するメモリはありません</div>'}`;
@@ -81,7 +81,7 @@ function openChipSheet(id) {
   });
 }
 function deleteChip(c) {
-  if (S.insertedId === c.id) { S.insertedId = null; removeSlotChip(); applyParams(); }
+  if (isSeated(c.id)) { S.slots[S.slots.indexOf(c.id)] = null; removeSlotChip(c.id); applyParams(); saveSettings(); }
   S.chips = S.chips.filter((x) => x !== c);
   for (const k of S.cases) if (k.chipIds.includes(c.id)) { k.chipIds = k.chipIds.filter((x) => x !== c.id); saveCase(k); }
   if (c.builtin) { S.removedBuiltins = [...(S.removedBuiltins || []), c.id]; }

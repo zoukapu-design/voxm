@@ -41,7 +41,7 @@ const SAMPLE_SCRIPT = 'こんにちは。今日はいい天気ですね。あい
 const S = {
   tab: 'home',
   chips: [], cases: [],
-  selectedId: 'c_friendA', insertedId: null,
+  selectedId: 'c_friendA', slots: [null, null, null], // 3 bays on the deck: [left, centre, right]
   homeCase: 'all',
   fx: [], // [{id, amt}]
   fineTune: 0,
@@ -68,9 +68,10 @@ async function loadAll() {
   ];
   S.removedBuiltins = [...removed];
   S.cases = cases && cases.length ? cases.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : BUILTIN_CASES.map((c, i) => Object.assign({ order: i, createdAt: 0 }, c));
-  if (kv) for (const k of ['selectedId', 'insertedId', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) if (k in kv) S[k] = kv[k];
+  if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) if (k in kv) S[k] = kv[k];
+  if (kv && !kv.slots && kv.insertedId) S.slots = [null, kv.insertedId, null]; // single-slot era
   if (!chipById(S.selectedId)) S.selectedId = S.chips[0]?.id || null;
-  if (S.insertedId && !chipById(S.insertedId)) S.insertedId = null;
+  S.slots = [0, 1, 2].map((i) => (Array.isArray(S.slots) && chipById(S.slots[i]) ? S.slots[i] : null));
   if (S.homeCase !== 'all' && !S.cases.find((c) => c.id === S.homeCase)) S.homeCase = 'all';
   S.recordings = (recs || []).sort((a, b) => b.createdAt - a.createdAt);
 }
@@ -79,7 +80,7 @@ function saveSettings() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     const kv = {};
-    for (const k of ['selectedId', 'insertedId', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) kv[k] = S[k];
+    for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) kv[k] = S[k];
     kv.removedBuiltins = S.removedBuiltins || [];
     VoxStore.put('kv', 'settings', kv);
   }, 200);
@@ -99,22 +100,31 @@ function wheelList() {
 }
 
 /* ===== voice parameters ===== */
-function combinedParams() {
-  const chip = chipById(S.insertedId);
-  const p = Object.assign({}, VoxEngine.DEFAULT, chip ? chip.profile : {});
-  for (const layer of S.fx) {
-    const fx = FX_LIB.find((f) => f.id === layer.id);
-    if (!fx) continue;
-    const a = layer.amt;
-    for (const [k, v] of Object.entries(fx.p)) {
-      if (k === 'pitch' || k === 'formant' || k === 'bass' || k === 'presence') p[k] += v * a;
-      else if (k === 'robotHz') { if (a > 0.25) p.robotHz = p.robotHz || v; }
-      else if (k === 'ringHz') { if (!p.ring || fx.p.ring * a > p.ring) p.ringHz = v; }
-      else if (k === 'lowcut') p.lowcut = Math.max(p.lowcut, 70 + (v - 70) * a);
-      else if (k === 'highcut') p.highcut = Math.min(p.highcut, 16000 + (v - 16000) * a);
-      else p[k] = Math.max(p[k] || 0, v * a);
-    }
+const seatedChips = () => S.slots.map(chipById).filter(Boolean);
+const isSeated = (id) => !!id && S.slots.includes(id);
+const seatedName = (sep = ' × ') => seatedChips().map((c) => c.name).join(sep);
+const ADDITIVE = ['pitch', 'formant', 'bass', 'presence'];
+function layerParams(p, src, a, skipAdditive) {
+  for (const [k, v] of Object.entries(src || {})) {
+    if (ADDITIVE.includes(k)) { if (!skipAdditive) p[k] += v * a; }
+    else if (k === 'robotHz') { if (a > 0.25 && v) p.robotHz = p.robotHz || v; }
+    else if (k === 'ring') { if (v * a > p.ring) { p.ring = v * a; if (src.ringHz) p.ringHz = src.ringHz; } }
+    else if (k === 'ringHz') { if (!src.ring) p.ringHz = v; }
+    else if (k === 'lowcut') p.lowcut = Math.max(p.lowcut, 70 + (v - 70) * a);
+    else if (k === 'highcut') p.highcut = Math.min(p.highcut, 16000 + (v - 16000) * a);
+    else if (k in p) p[k] = Math.max(p[k] || 0, v * a);
   }
+}
+// Several chips at once: people's voices (friend / self) are blended (averaged) into one identity,
+// character and effect chips are layered on top of it, then the FX rack.
+function combinedParams() {
+  const chips = seatedChips();
+  const p = Object.assign({}, VoxEngine.DEFAULT);
+  const voices = chips.filter((c) => c.kind === 'friend' || c.kind === 'self');
+  for (const k of ADDITIVE) if (voices.length) p[k] = voices.reduce((s, c) => s + ((c.profile || {})[k] || 0), 0) / voices.length;
+  for (const c of voices) layerParams(p, c.profile, 1, true);
+  for (const c of chips) if (!voices.includes(c)) layerParams(p, c.profile, 1);
+  for (const layer of S.fx) { const fx = FX_LIB.find((f) => f.id === layer.id); if (fx) layerParams(p, fx.p, layer.amt); }
   p.pitch = clamp(p.pitch + S.fineTune, -12, 14);
   p.formant = clamp(p.formant, -5.5, 7);
   return p;

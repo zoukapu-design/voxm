@@ -38,7 +38,7 @@ async def main():
             await p.screenshot(path=D + '/shots/video_saved.png')
             # reload persistence
             await p.reload(); await p.wait_for_timeout(1200)
-            print('after reload chips:', await p.evaluate('VOXM_DEBUG.S.chips.length'), 'inserted:', await p.evaluate('VOXM_DEBUG.S.insertedId && VOXM_DEBUG.S.insertedId.slice(0,6)'), 'recs:', await p.evaluate('VOXM_DEBUG.S.recordings.length'))
+            print('after reload chips:', await p.evaluate('VOXM_DEBUG.S.chips.length'), 'inserted:', await p.evaluate('JSON.stringify(VOXM_DEBUG.S.slots)'), 'recs:', await p.evaluate('VOXM_DEBUG.S.recordings.length'))
             await p.screenshot(path=D + '/shots/after_reload.png')
             await b.close()
     finally:

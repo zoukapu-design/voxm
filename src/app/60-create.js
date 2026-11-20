@@ -339,7 +339,7 @@ async function saveDraft() {
   S.selectedId = chip.id;
   if (S.homeCase !== 'all' && !caseById(S.homeCase).chipIds.includes(chip.id)) S.homeCase = 'all';
   saveSettings();
-  if (S.insertedId === chip.id) { applyParams(); syncSlotChip(); }
+  if (isSeated(chip.id)) { applyParams(); syncSlotChips(); }
   go('home');
   toast(isNew ? `「${chip.name}」を作成しました。下にドラッグして装着！` : '保存しました', 3000);
 }

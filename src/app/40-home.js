@@ -1,10 +1,13 @@
 /* ===== HOME: memory wheel → HOLO DECK (straight insertion) ===== */
-const W = { pos: 0, list: [], cards: [], drag: null, dragCard: null, dragY: 0, scale: 1, anim: 0, inserting: false, lastCenter: -1, lv: 0 };
+const W = { pos: 0, list: [], cards: [], drag: null, dragCard: null, dragY: 0, scale: 1, anim: 0, inserting: false, lastCenter: -1, lv: 0, flyingId: null, bootBay: 1 };
 const STEP = 104;
-// The deck faces the viewer; its slit sits exactly under the wheel's centre card, so a chip drops straight in.
-const DK = { W: 330, H: 184, R: 92, plateZ: 34, slitX: 165, slitY: 50 };
-const CARD = { left: 130, w: 130, h: 180, show: 146 }; // `show`: how much of a seated chip stays above the slit
+// The deck faces the viewer. One long rail slit holds three bays; the centre bay sits exactly under the
+// wheel's centre card, so a chip always drops straight in. Seated chips slide sideways along the rail.
+const DK = { W: 350, H: 176, R: 58, plateZ: 34, slitY: 44, bayX: [67, 175, 283] };
+const CARD = { left: 130, w: 130, h: 180 };
+const SEAT = { k: 0.6, show: 92 }; // seated chips: scale, and how much stays above the slit
 let SLIT_Y = 400; // slit line in stage px (measured)
+let BAY_X = [95, 195, 295]; // bay centres in stage px (measured)
 
 function stageHTML() {
   return `<div class="stage-host" id="stageHost"><div class="stage" id="stage">
@@ -18,7 +21,7 @@ function stageHTML() {
     <svg class="guide" id="guide" viewBox="0 0 390 640" aria-hidden="true"><defs><linearGradient id="gdg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8b4ff" stop-opacity="0"/><stop offset=".4" stop-color="#d6c8ff" stop-opacity=".9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><path id="guidePath" d=""/><path id="guideBeam" d=""/><circle id="guideDot" r="3"/></svg>
     <div class="deck-floor"></div>
     <div class="deck-scene"><div class="deck-obj deck" id="deck"></div></div>
-    <div class="slot-layer" id="slotLayer"><div class="ring-wrap" id="ringWrap"><canvas id="ringCv" width="480" height="480"></canvas></div></div>
+    <div class="slot-layer" id="slotLayer"><canvas class="spec" id="specCv" width="780" height="360"></canvas>${[0, 1, 2].map((i) => `<div class="bay-holo" data-bay="${i}"><svg viewBox="0 0 78 108" aria-hidden="true"><path d="M4 .75H60L77.25 18V108H.75V4Z"/></svg><i class="scan"></i><b>0${i + 1}</b><span>EMPTY</span></div>`).join('')}</div>
     <div class="hit" id="hitVol" role="slider" aria-label="出力音量（左右にドラッグ）" tabindex="0"></div>
     <div class="ctrl">
       <button class="cbtn main" id="kConv"><i class="dot"></i><b id="kConvTxt">変換 ON</b></button>
@@ -48,18 +51,23 @@ function buildDeck() {
   dEl('L floor-grid', `left:-220px;top:-160px;width:${w + 440}px;height:${h + 320}px;transform:translateZ(-1px)`, o);
   // graphite pedestal + glowing base
   slab(o, { w, h, r: R, z0: 0, depth: 10, n: 6, inset: (t) => 20 - t * 4, bg: (t) => `linear-gradient(90deg,#0d0c13,${mixHex('#2a2836', '#3c3a4c', t)} 30%,${mixHex('#4c4a5e', '#6a6680', t)} 48%,#242230 70%,#0b0a10)` });
-  dEl('L', `left:16px;top:16px;width:${w - 32}px;height:${h - 32}px;border-radius:${R - 16}px;transform:translateZ(10.5px);background:radial-gradient(closest-side,#2a2442,#0d0b16);box-shadow:inset 0 0 0 1.5px #d6c8ff,0 0 18px 3px rgba(200,180,255,.6)`, o);
+  dEl('L', `left:16px;top:16px;width:${w - 32}px;height:${h - 32}px;border-radius:${R - 16}px;transform:translateZ(10.5px);background:radial-gradient(closest-side,#2a2442,#0d0b16);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--tint) 45%,#fff),0 0 18px 3px color-mix(in srgb,var(--tint) 65%,transparent)`, o);
   // levitation gap: light rims only
-  for (let i = 0; i < 6; i++) dEl('L gaprim', `left:22px;top:22px;width:${w - 44}px;height:${h - 44}px;border-radius:${R - 22}px;transform:translateZ(${12 + i * 2.6}px);border:1px solid rgba(214,198,255,${(0.6 - i * 0.07).toFixed(2)});box-shadow:0 0 ${8 + i * 2}px rgba(190,170,255,${(0.38 - i * 0.04).toFixed(2)})`, o);
+  for (let i = 0; i < 6; i++) dEl('L gaprim', `left:22px;top:22px;width:${w - 44}px;height:${h - 44}px;border-radius:${R - 22}px;transform:translateZ(${12 + i * 2.6}px);border:1px solid color-mix(in srgb,color-mix(in srgb,var(--tint) 35%,#fff) ${Math.round((0.6 - i * 0.07) * 100)}%,transparent);box-shadow:0 0 ${8 + i * 2}px color-mix(in srgb,var(--tint) ${Math.round((0.4 - i * 0.04) * 100)}%,transparent)`, o);
   // floating pearl plate
   slab(o, { w, h, r: R, z0: 27, depth: 7, n: 7, inset: (t) => 3 * (1 - t), bg: (t) => `linear-gradient(90deg,rgba(150,140,190,.7),rgba(235,230,250,${(0.7 + t * 0.2).toFixed(2)}) 34%,#ffffff 48%,rgba(205,198,228,.8) 70%,rgba(120,110,160,.7))` });
   dEl('L', `left:0;top:0;width:${w}px;height:${h}px;border-radius:${R}px;transform:translateZ(27px);box-shadow:0 0 0 1px rgba(214,200,255,.9),0 0 16px 2px rgba(200,180,255,.55)`, o);
   const top = dEl('L', `left:0;top:0;width:${w}px;height:${h}px;border-radius:${R}px;transform:translateZ(${DK.plateZ}px);background:radial-gradient(110% 90% at 30% 0%,#ffffff 0%,#f4f1fa 42%,#e2ddee 100%);box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.95),inset 0 0 0 3px rgba(200,180,255,.3),inset 0 -8px 18px rgba(150,130,210,.25)`, o);
-  // emitter ring printed around the slit (the hologram ring rises from it)
-  dEl('face dk-ring', `inset:auto;left:${DK.slitX - 70}px;top:${DK.slitY - 34}px;width:140px;height:68px;border-radius:50%`, top);
-  // the slit, centred under the wheel
-  dEl('face dk-slit', `inset:auto;left:${DK.slitX - 74}px;top:${DK.slitY - 4}px;width:148px;height:8px;border-radius:4px`, top);
-  dEl('face dk-ripple', `inset:auto;left:${DK.slitX - 40}px;top:${DK.slitY - 40}px;width:80px;height:80px`, top).id = 'dkRipple';
+  // under-glow per bay (lit in the seated chip's colour)
+  DK.bayX.forEach((x, i) => dEl('face dk-spill', `inset:auto;left:${x - 64}px;top:${DK.slitY - 34}px;width:128px;height:68px`, top).dataset.bay = i);
+  // the rail slit: one long opening, three bays
+  dEl('face dk-slit', `inset:auto;left:16px;top:${DK.slitY - 4}px;width:${w - 32}px;height:8px;border-radius:4px`, top, '<i class="rail"></i>');
+  DK.bayX.forEach((x, i) => {
+    dEl('face dk-pt', `inset:auto;left:${x - 1}px;top:${DK.slitY - 1}px;width:2px;height:2px`, top).dataset.bay = i;
+    dEl('face dk-bay', `inset:auto;left:${x - 34}px;top:${DK.slitY + 9}px;width:68px;height:12px`, top, `<i></i><b>0${i + 1}</b>`).dataset.bay = i;
+    dEl('face dk-ripple', `inset:auto;left:${x - 36}px;top:${DK.slitY - 36}px;width:72px;height:72px`, top).id = 'dkRipple' + i;
+  });
+  dEl('face dk-lip', `inset:auto;left:${w / 2 - 110}px;top:${h - 13}px;width:220px;height:2px;border-radius:2px`, top, '<i></i>');
   // light UI printed on the plate (front left / front right)
   top.insertAdjacentHTML('beforeend', `<div class="dk-ui dk-ui-l">
     <div class="dk-status" id="dkStatus">VOICE CORE · STANDBY</div>
@@ -79,7 +87,7 @@ RENDER.home = () => {
     bindHome();
   }
   rebuildWheel();
-  syncSlotChip();
+  syncSlotChips();
   updateDriver();
 };
 
@@ -105,19 +113,21 @@ function placeHits() {
     const r = stageRect(slit);
     if (r.height) {
       SLIT_Y = Math.round(r.top + r.height * 0.55);
-      const layer = $('#slotLayer');
-      layer.style.height = SLIT_Y + 'px';
-      const ring = $('#ringWrap');
-      ring.style.top = (SLIT_Y - 196) + 'px';
-      const sc = $('#slotChip');
-      if (sc && !W.inserting) sc.style.transform = `translateY(${restTop()}px)`;
+      $$('#deck .dk-pt').forEach((pt) => { const q = stageRect(pt); BAY_X[+pt.dataset.bay] = Math.round((q.left + q.width / 2) * 10) / 10; });
+      $('#slotLayer').style.height = SLIT_Y + 'px';
+      $('#specCv').style.top = (SLIT_Y - 180) + 'px';
+      if (!W.inserting) $$('#slotLayer .slot-chip').forEach((sc) => { sc.style.transform = seatT(+sc.dataset.bay, restTop()); });
+      $$('#slotLayer .bay-holo').forEach((h) => { h.style.transform = `translate(${(BAY_X[+h.dataset.bay] - 39).toFixed(1)}px,${restTop()}px)`; });
     }
   }
   const hit = $('#hitVol'), vol = $('#dkVol');
   if (hit && vol) { const r = stageRect(vol); const pad = 14; Object.assign(hit.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' }); }
   drawGuide();
 }
-const restTop = () => SLIT_Y - CARD.show;
+const restTop = () => SLIT_Y - SEAT.show;
+// transform of a chip whose top-centre sits at (x, top), scaled by k (transform-origin: top centre)
+const chipT = (x, top, k) => `translate(${(x - CARD.w / 2).toFixed(1)}px,${top.toFixed(1)}px) scale(${k.toFixed(4)})`;
+const seatT = (bay, top, k = SEAT.k) => chipT(BAY_X[bay], top, k);
 
 /* ---- wheel ---- */
 function rebuildWheel() {
@@ -129,7 +139,7 @@ function rebuildWheel() {
     const el = document.createElement('div');
     el.className = 'wcard';
     el.dataset.i = i;
-    el.innerHTML = chipHTML(c, { dim: true }) + `<div class="ghost-frame">${ICON.eject}<span>IN DRIVER</span></div>`;
+    el.innerHTML = chipHTML(c, { dim: true }) + `<div class="ghost-frame">${ICON.eject}<span>IN SLOT</span><b class="gslot"></b></div>`;
     wheel.append(el);
     return el;
   });
@@ -164,7 +174,10 @@ function layoutWheel() {
     if (dim) dim.style.opacity = Math.min(0.6, a * 0.34).toFixed(3);
     el.style.setProperty('--sheen', (50 + d * 70).toFixed(1) + '%');
     el.classList.toggle('center', a < 0.5);
-    el.classList.toggle('ghost', W.list[i] && W.list[i].id === S.insertedId);
+    const gid = W.list[i] && W.list[i].id;
+    const gh = !!gid && (isSeated(gid) || gid === W.flyingId);
+    el.classList.toggle('ghost', gh);
+    if (gh) { const b = S.slots.indexOf(gid); const g = el.querySelector('.gslot'); const v = b >= 0 ? '0' + (b + 1) : ''; if (g.textContent !== v) g.textContent = v; }
   });
   const ci = centerIndex();
   if (ci !== W.lastCenter && ci >= 0) {
@@ -245,8 +258,8 @@ function bindHome() {
       if (!D.card) return;
       const i = +D.card.dataset.i;
       if (i === centerIndex()) {
-        if (D.card.classList.contains('ghost')) ejectChip(false);
-        else insertCurrent(0);
+        if (D.card.classList.contains('ghost')) ejectChip(W.list[i].id);
+        else insertCurrent();
       } else {
         const n = W.cards.length;
         const d = n >= 4 ? wrapD(i - W.pos, n) : i - W.pos;
@@ -293,114 +306,155 @@ function bindHome() {
   requestAnimationFrame(screenLoop);
 }
 
-/* ---- straight insertion: the card drops from the wheel into the slit right below it ---- */
-function makeSlotChip(chip, top, left = CARD.left) {
-  let sc = $('#slotChip');
-  if (sc) sc.remove();
-  sc = document.createElement('div');
-  sc.className = 'slot-chip'; sc.id = 'slotChip';
-  sc.dataset.id = chip.id;
-  sc.style.left = left + 'px';
-  sc.style.transform = `translateY(${top}px)`;
-  sc.setAttribute('aria-label', chip.name + '（タップで取り出す）');
-  sc.innerHTML = chipHTML(chip);
+/* ---- seated chips (2D, in a clip layer whose bottom edge is the slit) ---- */
+const slotEl = (id) => $$('#slotLayer .slot-chip').find((e) => e.dataset.id === id) || null;
+function makeSlotChip(chip, bay, transform) {
+  const old = slotEl(chip.id); if (old) old.remove();
+  const sc = document.createElement('div');
+  sc.className = 'slot-chip';
+  sc.dataset.id = chip.id; sc.dataset.bay = bay;
+  sc.style.transform = transform;
+  sc.setAttribute('aria-label', chip.name + '（タップか上に引いて取り出す）');
+  sc.innerHTML = chipHTML(chip, { noBadge: true });
   $('#slotLayer').append(sc);
   return sc;
 }
-function removeSlotChip() { const sc = $('#slotChip'); if (sc) sc.remove(); }
-function syncSlotChip() {
+function removeSlotChip(id) { $$('#slotLayer .slot-chip').forEach((e) => { if (!id || e.dataset.id === id) e.remove(); }); }
+function syncSlotChips() {
   if (W.inserting) return;
-  const chip = chipById(S.insertedId);
-  if (!chip) { removeSlotChip(); return; }
-  const sc = $('#slotChip');
-  if (sc && sc.dataset.id === chip.id) { sc.innerHTML = chipHTML(chip); sc.querySelector('.chip').classList.add('active'); return; }
-  makeSlotChip(chip, restTop()).querySelector('.chip').classList.add('active');
+  const rest = restTop();
+  $$('#slotLayer .slot-chip').forEach((e) => { if (!isSeated(e.dataset.id)) e.remove(); });
+  S.slots.forEach((id, bay) => {
+    const chip = chipById(id); if (!chip) return;
+    let sc = slotEl(id);
+    if (sc) { sc.innerHTML = chipHTML(chip, { noBadge: true }); sc.dataset.bay = bay; sc.style.transform = seatT(bay, rest); }
+    else sc = makeSlotChip(chip, bay, seatT(bay, rest));
+    sc.querySelector('.chip').classList.add('active');
+  });
 }
-function ripple() {
-  const r = $('#dkRipple'); if (!r || S.reduceMotion) return;
-  r.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(3.4)', opacity: 0 }], { duration: 650, easing: 'cubic-bezier(.2,.8,.3,1)' });
+function ripple(bay = 1) {
+  const r = $('#dkRipple' + bay); if (!r || S.reduceMotion) return;
+  r.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(3)', opacity: 0 }], { duration: 650, easing: 'cubic-bezier(.2,.8,.3,1)' });
 }
-function contactFx() {
+function contactFx(bay = 1) {
   const d = $('#deck');
   VoxEngine.sfx('insert');
   d.classList.remove('thunk'); void d.offsetWidth; d.classList.add('thunk');
-  ripple();
+  ripple(bay);
   try { navigator.vibrate && navigator.vibrate(18); } catch (e) {}
 }
 function tween(el, frames, dur, easing) {
   const a = el.animate(frames, { duration: S.reduceMotion ? 1 : dur, easing, fill: 'forwards' });
   return a.finished.catch(() => {}).then(() => { const last = frames[frames.length - 1]; for (const k in last) if (k !== 'offset' && k !== 'easing') el.style[k] = last[k]; try { a.cancel(); } catch (e) {} });
 }
+function syncHolos() {
+  const c = W.list[centerIndex()];
+  const canDrop = c && !isSeated(c.id);
+  $$('#slotLayer .bay-holo').forEach((h) => {
+    const b = +h.dataset.bay;
+    h.classList.toggle('off', !!S.slots[b]);
+    h.classList.toggle('target', b === 1 && !S.slots[1] && !!canDrop);
+  });
+}
+function lightBay(bay) { const e = $(`#deck .dk-bay[data-bay="${bay}"]`); if (!e) return; e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); }
+
+/* Insert: the centre card always drops straight down into the centre bay. If that bay is taken, its chip
+   first slides along the rail to a free bay; if all three are taken, it is swapped out. */
 async function insertCurrent() {
   const ci = centerIndex();
   const chip = W.list[ci];
-  if (!chip || W.inserting) return;
-  if (S.insertedId && S.insertedId !== chip.id) await ejectChip(true);
+  if (!chip || W.inserting || isSeated(chip.id)) return;
   W.inserting = true;
+  W.bootBase = seatedChips().length ? 1 : 0; W.bootT = performance.now() + 1e7; // bars wait for the chip to seat
   const deck = $('#deck');
+  const rest = restTop();
+  const occ = S.slots[1];
+  if (occ) {
+    const el = slotEl(occ);
+    const free = !S.slots[0] ? 0 : !S.slots[2] ? 2 : -1;
+    if (free >= 0) {
+      S.slots[free] = occ; S.slots[1] = null;
+      if (el) {
+        el.dataset.bay = free;
+        tween(el, [{ transform: seatT(1, rest) }, { transform: seatT(1, rest + 4), offset: 0.15 }, { transform: seatT(free, rest + 4), offset: 0.8 }, { transform: seatT(free, rest) }], 340, 'cubic-bezier(.45,0,.2,1)')
+          .then(() => { lightBay(free); });
+      }
+      VoxEngine.sfx('tick');
+    } else {
+      S.slots[1] = null; // rack full: swap the centre chip out
+      if (el) { el.querySelector('.chip').classList.remove('active'); tween(el, [{ transform: seatT(1, rest), opacity: 1 }, { transform: seatT(1, rest - 70), opacity: 0 }], 240, 'cubic-bezier(.2,.7,.3,1)').then(() => el.remove()); }
+      VoxEngine.sfx('eject');
+      toast(`「${chipById(occ)?.name || ''}」と入れ替えました`);
+    }
+  }
   const card = W.cards[ci];
   const r = stageRect(card.querySelector('.chip'));
   card.classList.remove('dragging');
   W.dragCard = null; W.dragY = 0;
-  S.insertedId = chip.id;
-  const sc = makeSlotChip(chip, r.top, r.left);
-  layoutWheel(); // the wheel slot turns into a ghost; the identical card now sits in the slot layer
-  drawGuide();
+  S.slots[1] = chip.id;
+  const x0 = r.left + r.width / 2, k0 = r.width / CARD.w;
+  const sc = makeSlotChip(chip, 1, chipT(x0, r.top, k0));
+  layoutWheel(); // the wheel slot turns into a ghost; the identical card now lives in the slot layer
+  drawGuide(); syncHolos();
   deck.classList.add('armed');
-  const rest = restTop();
   const dist = Math.max(40, rest - r.top);
-  // drop straight down (accelerating like it's pulled in), then seat with a short spring
-  await tween(sc, [{ transform: `translateY(${r.top}px)`, left: r.left + 'px' }, { transform: `translateY(${rest + 7}px)`, left: CARD.left + 'px' }], 180 + dist * 0.75, 'cubic-bezier(.55,0,.85,.45)');
-  contactFx();
+  // drop straight down, shrinking into the deck's depth (pulled in), then seat with a short spring
+  await tween(sc, [{ transform: chipT(x0, r.top, k0) }, { transform: seatT(1, rest + 6) }], 190 + dist * 0.75, 'cubic-bezier(.55,0,.85,.45)');
+  contactFx(1); lightBay(1);
   deck.classList.remove('armed');
   sc.querySelector('.chip').classList.add('active');
-  await tween(sc, [{ transform: `translateY(${rest + 7}px)` }, { transform: `translateY(${rest - 3}px)`, offset: 0.55 }, { transform: `translateY(${rest}px)` }], 260, 'ease-out');
-  W.bootT = performance.now();
-  deck.classList.add('loaded', 'booting');
-  $('#ringWrap').classList.add('on');
+  await tween(sc, [{ transform: seatT(1, rest + 6) }, { transform: seatT(1, rest - 3), offset: 0.55 }, { transform: seatT(1, rest) }], 260, 'ease-out');
+  W.bootT = performance.now(); W.bootBay = 1;
+  deck.classList.add('booting');
   setTimeout(() => deck.classList.remove('booting'), 900);
   W.inserting = false;
   saveSettings(); applyParams(); updateDriver(); drawGuide();
-  if (VoxEngine.status.state === 'live') toast(`「${chip.name}」の声に切り替えました`);
+  if (VoxEngine.status.state === 'live') toast(seatedChips().length > 1 ? `「${seatedName()}」をミックス中` : `「${chip.name}」の声に切り替えました`);
 }
+
 const HOME_TOP = 42; // stage y of the wheel's centre card (wheel top 34 + card top 8)
-// Eject = one continuous motion: pop out of the slit, hang for a beat, then glide straight up into the
-// wheel's centre slot (the wheel turns the chip's home slot to the centre meanwhile) and hand over.
-async function ejectChip(quick, fromTop) {
-  const id = S.insertedId;
-  const sc = $('#slotChip');
-  if (!id || !sc) { S.insertedId = null; removeSlotChip(); updateDriver(); return; }
+// Eject one chip: it pops out of its bay, then glides up into the wheel's centre slot in one motion
+// (the wheel turns that chip's home slot to the centre meanwhile) and hands over to the wheel card.
+async function ejectChip(id, quick, fromTop) {
+  id = id || S.slots[1] || S.slots.find(Boolean);
+  const bay = S.slots.indexOf(id);
+  const sc = id && slotEl(id);
+  if (bay < 0 || !sc || W.inserting) { if (bay >= 0 && !sc) { S.slots[bay] = null; updateDriver(); } return; }
   const deck = $('#deck');
   W.inserting = true;
+  S.slots[bay] = null; W.flyingId = id; // the voice drops this chip right away; the wheel keeps its ghost until hand-over
+  applyParams();
   const i = W.list.findIndex((c) => c.id === id);
   if (!quick && i >= 0 && i !== centerIndex()) {
     const n = W.cards.length;
     animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), null, 0.3);
   }
-  deck.classList.remove('loaded');
-  $('#ringWrap').classList.remove('on');
   deck.classList.add('releasing');
   sc.querySelector('.chip').classList.remove('active');
   VoxEngine.sfx('eject');
-  ripple();
+  ripple(bay);
+  updateDriver(); syncHolos();
   const rest = restTop();
   const cur = fromTop ?? rest;
+  const done = () => { W.flyingId = null; W.inserting = false; deck.classList.remove('releasing'); saveSettings(); applyParams(); layoutWheel(); updateDriver(); drawGuide(); };
   if (quick) {
-    await tween(sc, [{ transform: `translateY(${cur}px)`, opacity: 1 }, { transform: `translateY(${cur - 90}px)`, opacity: 0 }], 240, 'cubic-bezier(.2,.7,.3,1)');
-    sc.remove(); deck.classList.remove('releasing');
-    S.insertedId = null; W.inserting = false; layoutWheel(); updateDriver(); drawGuide();
-    return;
+    await tween(sc, [{ transform: seatT(bay, cur), opacity: 1 }, { transform: seatT(bay, cur - 80), opacity: 0 }], 240, 'cubic-bezier(.2,.7,.3,1)');
+    sc.remove(); done(); return;
   }
-  const dist = Math.max(60, cur - HOME_TOP);
-  const dur = S.reduceMotion ? 1 : Math.round(500 + dist * 0.7);
+  const hx = CARD.left + CARD.w / 2;
+  const dist = Math.max(60, cur - HOME_TOP + Math.abs(BAY_X[bay] - hx) * 0.5);
+  const dur = S.reduceMotion ? 1 : Math.round(520 + dist * 0.7);
   const popped = fromTop == null; // a drag already pulled it out, so skip the pop
+  // rise first, then drift sideways to the centre: a gentle curve instead of a flat diagonal
+  const mid = (t, ty, tk) => chipT(BAY_X[bay] + (hx - BAY_X[bay]) * t, cur - 32 + (HOME_TOP - cur + 32) * ty, SEAT.k + (1 - SEAT.k) * tk);
   const frames = popped ? [
-    { transform: `translateY(${cur}px)`, offset: 0, easing: 'cubic-bezier(.25,.8,.4,1)' },
-    { transform: `translateY(${cur - 32}px)`, offset: 0.17, easing: 'cubic-bezier(.4,.05,.15,1)' },
-    { transform: `translateY(${HOME_TOP}px)`, offset: 1 },
+    { transform: seatT(bay, cur), offset: 0, easing: 'cubic-bezier(.25,.8,.4,1)' },
+    { transform: seatT(bay, cur - 32, SEAT.k + 0.03), offset: 0.17, easing: 'cubic-bezier(.45,.05,.55,.95)' },
+    { transform: mid(0.4, 0.62, 0.55), offset: 0.6, easing: 'cubic-bezier(.3,.5,.2,1)' },
+    { transform: chipT(hx, HOME_TOP, 1), offset: 1 },
   ] : [
-    { transform: `translateY(${cur}px)`, offset: 0, easing: 'cubic-bezier(.3,.6,.15,1)' },
-    { transform: `translateY(${HOME_TOP}px)`, offset: 1 },
+    { transform: seatT(bay, cur), offset: 0, easing: 'cubic-bezier(.3,.6,.15,1)' },
+    { transform: chipT(hx, HOME_TOP, 1), offset: 1 },
   ];
   const a = sc.animate(frames, { duration: popped ? dur : Math.round(dur * 0.75), fill: 'forwards' });
   setTimeout(() => deck.classList.remove('releasing'), 300);
@@ -408,24 +462,25 @@ async function ejectChip(quick, fromTop) {
   // hand over to the identical card in the wheel
   cancelAnimationFrame(W.anim);
   if (i >= 0) W.pos = i;
-  S.insertedId = null;
+  W.flyingId = null;
   layoutWheel();
   const card = i >= 0 ? W.cards[i] : null;
   if (card) { card.classList.add('landing'); setTimeout(() => card.classList.remove('landing'), 600); }
+  else sc.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' });
   VoxEngine.sfx('tick');
-  requestAnimationFrame(() => sc.remove());
-  W.inserting = false;
-  saveSettings(); applyParams(); updateDriver(); drawGuide();
+  setTimeout(() => sc.remove(), card ? 16 : 200);
+  done();
 }
 
-/* drag a seated chip upward to pull it out (tap also works) */
+/* drag any seated chip upward to pull it out (a tap also ejects it) */
 function bindSlotDrag() {
   const layer = $('#slotLayer');
   let d = null;
   layer.addEventListener('pointerdown', (e) => {
     const sc = e.target.closest('.slot-chip');
-    if (!sc || W.inserting || !S.insertedId) return;
-    d = { y0: e.clientY, moved: false, id: e.pointerId, sc, rest: restTop(), lt: performance.now(), ly: e.clientY, vy: 0 };
+    if (!sc || W.inserting || !isSeated(sc.dataset.id)) return;
+    d = { y0: e.clientY, moved: false, id: e.pointerId, sc, cid: sc.dataset.id, bay: +sc.dataset.bay, rest: restTop(), lt: performance.now(), ly: e.clientY, vy: 0 };
+    d.cur = d.rest;
     try { sc.setPointerCapture(e.pointerId); } catch (err) {}
   });
   layer.addEventListener('pointermove', (e) => {
@@ -437,28 +492,30 @@ function bindSlotDrag() {
     if (!d.moved && Math.abs(dy) < 6) return;
     d.moved = true;
     const up = Math.min(0, dy);
-    d.cur = d.rest + (up > -40 ? up : -40 + (up + 40) * 0.9) + Math.max(0, dy) * 0.12;
-    d.sc.style.transform = `translateY(${d.cur}px)`;
-    $('#deck').classList.toggle('armed', d.rest - d.cur > 36);
+    d.cur = d.rest + (up > -36 ? up : -36 + (up + 36) * 0.9) + Math.max(0, dy) * 0.1;
+    d.sc.style.transform = seatT(d.bay, d.cur);
+    $('#deck').classList.toggle('armed', d.rest - d.cur > 30);
   });
   const end = (e) => {
     if (!d || e.pointerId !== d.id) return;
     const dd = d; d = null;
     $('#deck').classList.remove('armed');
-    if (!dd.moved) { ejectChip(false); return; }
-    if (dd.rest - dd.cur > 46 || dd.vy < -0.5) ejectChip(false, dd.cur);
-    else tween(dd.sc, [{ transform: `translateY(${dd.cur}px)` }, { transform: `translateY(${dd.rest}px)` }], 220, 'cubic-bezier(.3,1.4,.5,1)');
+    if (!dd.moved) { ejectChip(dd.cid); return; }
+    if (dd.rest - dd.cur > 40 || dd.vy < -0.5) ejectChip(dd.cid, false, dd.cur);
+    else tween(dd.sc, [{ transform: seatT(dd.bay, dd.cur) }, { transform: seatT(dd.bay, dd.rest) }], 220, 'cubic-bezier(.3,1.4,.5,1)');
   };
   layer.addEventListener('pointerup', end);
   layer.addEventListener('pointercancel', end);
 }
 
-/* ---- guide light straight down from the wheel to the slit ---- */
+/* ---- guide light straight down from the wheel to the centre bay ---- */
 function drawGuide() {
   const g = $('#guide'); if (!g) return;
-  const show = !S.insertedId && W.list.length;
+  const c = W.list[centerIndex()];
+  const show = c && !isSeated(c.id) && !W.inserting;
   g.classList.toggle('show', !!show);
-  const x = 195, y0 = 226, y1 = SLIT_Y - 4;
+  syncHolos();
+  const x = BAY_X[1], y0 = 226, y1 = SLIT_Y - 4;
   $('#guidePath').setAttribute('d', `M${x} ${y0} L${x} ${y1}`);
   const k = clamp((W.dragY || 0) / 90, 0, 1);
   g.style.setProperty('--k', k.toFixed(3));
@@ -475,7 +532,7 @@ async function toggleConvert() {
     VoxEngine.stop(); VoxEngine.sfx('off'); updateDriver(); return;
   }
   if (st.state === 'starting') return;
-  if (!S.insertedId && W.list.length) await insertCurrent(0);
+  if (!seatedChips().length && W.list.length) await insertCurrent();
   VoxEngine.setParams(combinedParams());
   VoxEngine.status.monitor = S.monitor; VoxEngine.status.volume = S.volume;
   await VoxEngine.start({ safeMode: S.safeMode, noiseSuppression: S.noiseSup });
@@ -509,9 +566,9 @@ async function toggleRec() {
 }
 async function saveRecording(res, kind, nameOverride) {
   const id = uid('r');
-  const chip = chipById(S.insertedId);
+  const chip = seatedChips()[0];
   const d = new Date();
-  const rec = { id, kind, name: nameOverride || ((chip ? chip.name : 'VOXM') + (kind === 'video' ? 'の動画' : 'の声')), mime: res.mime || res.blob.type, seconds: res.seconds || 0, size: res.blob.size, createdAt: d.getTime(), chipId: chip ? chip.id : null };
+  const rec = { id, kind, name: nameOverride || ((seatedName() || 'VOXM') + (kind === 'video' ? 'の動画' : 'の声')), mime: res.mime || res.blob.type, seconds: res.seconds || 0, size: res.blob.size, createdAt: d.getTime(), chipId: chip ? chip.id : null };
   await VoxStore.put('blobs', id, res.blob);
   await VoxStore.put('recordings', id, rec);
   S.recordings.unshift(rec);
@@ -528,12 +585,13 @@ function updateVol(flash) {
 }
 function updateDriver() {
   const deck = $('#deck'); if (!deck) return;
-  const st = VoxEngine.status, chip = chipById(S.insertedId);
+  const st = VoxEngine.status, chips = seatedChips();
   const live = st.state === 'live', rec = VoxEngine.recording();
-  deck.classList.toggle('loaded', !!chip && !W.inserting);
+  deck.classList.toggle('loaded', chips.length > 0);
   deck.classList.toggle('live', live);
-  $('#stage').classList.toggle('has-chip', !!chip);
+  $('#stage').classList.toggle('has-chip', chips.length > 0);
   $('#stage').classList.toggle('live', live);
+  $('#stage').dataset.n = chips.length;
   $('#kConv').classList.toggle('on', live);
   $('#kConvTxt').textContent = live ? '変換中' : st.state === 'starting' ? '起動中…' : '変換 ON';
   $('#kMon').classList.toggle('on', S.monitor);
@@ -541,26 +599,34 @@ function updateDriver() {
   $('#kFx').classList.toggle('on', S.fx.length > 0);
   const ic = { mon: S.monitor, rec, fx: S.fx.length > 0, out: !!st.sinkId };
   $$('#deck [data-ic]').forEach((s) => s.classList.toggle('on', !!ic[s.dataset.ic]));
-  $('#app').style.setProperty('--tint', chip ? chip.color : '#a487ff');
-  $('#dkName').textContent = chip ? chip.name : 'メモリを挿入';
-  $('#ringWrap').classList.toggle('on', !!chip && !W.inserting);
+  // bays: LED + under-glow in each seated chip's colour
+  S.slots.forEach((id, bay) => {
+    const c = chipById(id);
+    $$(`#deck [data-bay="${bay}"]`).forEach((e) => { e.classList.toggle('on', !!c); if (c) e.style.setProperty('--bc', c.color); });
+  });
+  // the whole scene takes the colour of the centre chip (or whichever is seated)
+  const lead = chipById(S.slots[1]) || chips[0];
+  $('#app').style.setProperty('--tint', lead ? lead.color : '#a487ff');
+  $('#dkName').textContent = !chips.length ? 'メモリを挿入' : chips.length === 1 ? chips[0].name : chips.map((c) => c.name).join(' × ');
+  $('#dkName').classList.toggle('mix', chips.length > 1);
+  syncHolos();
   updateVol();
 }
 
-/* hologram ring that rises from the slit around the seated chip, driven by the converted voice */
-let rgCtx = null;
+/* spectrum horizon: bars rise from the rail behind the seated chips, coloured bay by bay */
+let spCtx = null;
 const freqBuf = new Uint8Array(1024);
 const waveBuf = new Float32Array(2048);
 let lastScr = 0;
-const RING_N = 96;
-const ringVals = new Float32Array(RING_N);
+const SPEC_N = 84;
+const specVals = new Float32Array(SPEC_N);
 function screenLoop(t) {
   requestAnimationFrame(screenLoop);
   if (S.tab !== 'home' || t - lastScr < 33) return;
   lastScr = t;
-  const cv = $('#ringCv'); if (!cv) return;
-  if (!rgCtx) rgCtx = cv.getContext('2d');
-  const st = VoxEngine.status, live = st.state === 'live', chip = chipById(S.insertedId);
+  const cv = $('#specCv'); if (!cv) return;
+  if (!spCtx) spCtx = cv.getContext('2d');
+  const st = VoxEngine.status, live = st.state === 'live', chips = seatedChips();
   let lvNow = 0;
   if (live && st.outAnalyser) {
     st.outAnalyser.getFloatTimeDomainData(waveBuf);
@@ -570,46 +636,48 @@ function screenLoop(t) {
   }
   W.lv = W.lv * 0.7 + lvNow * 0.3;
   $('#stage').style.setProperty('--lv', W.lv.toFixed(3));
-  const half = RING_N / 2;
-  for (let i = 0; i < RING_N; i++) {
+  const half = (SPEC_N - 1) / 2;
+  for (let i = 0; i < SPEC_N; i++) {
+    const k = Math.abs(i - half) / half;
     let target;
-    if (live && st.outAnalyser) { const k = i < half ? i : RING_N - 1 - i; target = freqBuf[Math.floor(2 + Math.pow(k / half, 1.6) * 180)] / 255; }
-    else target = 0.16 + 0.1 * Math.sin(t / 650 + i * 0.4) * Math.cos(t / 1000 + i * 0.12);
-    ringVals[i] += (target - ringVals[i]) * 0.35;
+    if (live && st.outAnalyser) target = freqBuf[Math.floor(2 + Math.pow(k, 1.5) * 170)] / 255;
+    else target = 0.13 + 0.09 * Math.sin(t / 620 + i * 0.33) * Math.cos(t / 1100 - i * 0.11);
+    specVals[i] += (target - specVals[i]) * 0.35;
   }
-  const g = rgCtx, S2 = cv.width, c = S2 / 2;
-  g.clearRect(0, 0, S2, S2);
-  if (chip) {
-    const boot = W.bootT ? clamp((performance.now() - W.bootT) / 700, 0, 1) : 1;
-    const base = chip.color || '#c8b4ff';
-    const r1 = S2 * 0.38, len = S2 * 0.1;
+  const g = spCtx, CW = cv.width, CH = cv.height, sx = CW / 390;
+  g.clearRect(0, 0, CW, CH);
+  if (chips.length) {
+    const grad = g.createLinearGradient(0, 0, CW, 0);
+    const lead = chipById(S.slots[1]) || chips[0];
+    S.slots.forEach((id, bay) => { const c = chipById(id); grad.addColorStop(clamp(BAY_X[bay] / 390, 0, 1), mixHex((c || lead).color, '#ffffff', c ? 0.3 : 0.55)); });
+    const boot = W.bootT ? (performance.now() - W.bootT) / 1000 : 9;
+    const bx = BAY_X[W.bootBay] * sx;
+    const x0 = 24 * sx, x1 = 366 * sx, base = CH - 2 * sx, maxH = CH * 0.62;
     g.lineCap = 'round';
     for (let pass = 0; pass < 2; pass++) {
-      g.lineWidth = pass ? S2 / 170 : S2 / 110;
-      g.globalAlpha = pass ? 1 : 0.28;
-      for (let i = 0; i < RING_N; i++) {
-        const a = (i / RING_N) * Math.PI * 2 - Math.PI / 2;
-        const ang = (i / RING_N + 0.75) % 1;
-        const v = clamp(ringVals[i], 0.05, 1) * (boot >= 1 ? 1 : clamp((boot - Math.abs(ang - 0.5) * 0.9) * 3, 0, 1));
-        g.strokeStyle = pass ? mixHex(mixHex(base, '#ffffff', 0.35), '#ffb3e2', (Math.sin(a) + 1) / 2) : '#ffffff';
-        g.beginPath();
-        g.moveTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1);
-        g.lineTo(c + Math.cos(a) * (r1 + v * len), c + Math.sin(a) * (r1 + v * len));
-        g.stroke();
+      g.lineWidth = pass ? 2.1 * sx : 4.2 * sx;
+      g.globalAlpha = pass ? 0.95 : 0.22;
+      g.strokeStyle = grad;
+      g.beginPath();
+      for (let i = 0; i < SPEC_N; i++) {
+        const x = x0 + (x1 - x0) * (i / (SPEC_N - 1));
+        const k = Math.abs(i - half) / half;
+        const dome = 0.5 + 0.5 * Math.cos(k * Math.PI / 2);
+        const reveal = boot >= 1.2 ? 1 : boot < 0 ? W.bootBase : Math.max(W.bootBase, clamp((boot * 900 * sx - Math.abs(x - bx)) / (40 * sx), 0, 1));
+        const v = clamp(specVals[i], 0.04, 1) * dome * reveal;
+        if (v < 0.01) continue;
+        g.moveTo(x, base); g.lineTo(x, base - v * maxH);
       }
+      g.stroke();
     }
     g.globalAlpha = 1;
-    g.strokeStyle = 'rgba(230,220,255,.45)'; g.lineWidth = S2 / 360;
-    g.beginPath(); g.arc(c, c, S2 * 0.355, 0, Math.PI * 2); g.stroke();
-    g.save(); g.translate(c, c); g.rotate(t / 2200);
-    g.strokeStyle = 'rgba(230,220,255,.7)'; g.setLineDash([S2 * 0.2, S2 * 0.06, S2 * 0.02, S2 * 0.06]);
-    g.beginPath(); g.arc(0, 0, S2 * 0.33, 0, Math.PI * 2); g.stroke(); g.restore(); g.setLineDash([]);
   }
   const rec = VoxEngine.recording();
-  const status = !chip ? 'VOICE CORE · STANDBY' : rec ? 'VOICE CORE · ● REC ' + fmtSec((Date.now() - st.recStart) / 1000) : live ? 'VOICE CORE · LIVE' : 'VOICE CORE · LINKED';
+  const n = chips.length;
+  const status = !n ? 'VOICE CORE · STANDBY' : rec ? 'VOICE CORE · ● REC ' + fmtSec((Date.now() - st.recStart) / 1000) : (live ? 'VOICE CORE · LIVE' : 'VOICE CORE · LINKED') + (n > 1 ? ` · MIX ${n}` : '');
   const db = W.lv > 0.001 ? Math.round(20 * Math.log10(W.lv)) : null;
   let info = '—';
-  if (chip) { const pp = combinedParams(); info = pp.robotHz ? `ROBO ${Math.round(pp.robotHz)}Hz · TONE ${signed(pp.formant, 1)}` : `PITCH ${signed(pp.pitch, 1)} · TONE ${signed(pp.formant, 1)}`; }
+  if (n) { const pp = combinedParams(); info = (pp.robotHz ? `ROBO ${Math.round(pp.robotHz)}Hz` : `PITCH ${signed(pp.pitch, 1)}`) + ` · TONE ${signed(pp.formant, 1)}`; }
   if (live) info = (st.f0 ? `${Math.round(st.f0)} Hz · ♪ ${noteName(st.f0)}` : '— Hz') + (db !== null ? ` · ${db} dB` : '');
   if (W.volFlash && t - W.volFlash < 1200) info = 'VOLUME ' + Math.round((S.volume / 1.5) * 100) + '%';
   const set = (id, v) => { const e = $('#' + id); if (e && e.textContent !== v) e.textContent = v; };
