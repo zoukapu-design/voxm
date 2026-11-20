@@ -178,7 +178,7 @@ function layoutWheel() {
   }
   $('#wIdx').innerHTML = n ? `<b>${String(ci + 1).padStart(2, '0')}</b> / ${String(n).padStart(2, '0')}` : '';
 }
-function animateTo(target, done) {
+function animateTo(target, done, k = 0.2) {
   cancelAnimationFrame(W.anim);
   const n = W.cards.length;
   if (n < 4) target = clamp(target, 0, n - 1);
@@ -188,7 +188,7 @@ function animateTo(target, done) {
       W.pos = n >= 4 ? ((target % n) + n) % n : target;
       layoutWheel(); done && done(); return;
     }
-    W.pos += diff * (S.reduceMotion ? 1 : 0.2);
+    W.pos += diff * (S.reduceMotion ? 1 : k);
     layoutWheel();
     W.anim = requestAnimationFrame(step);
   };
@@ -274,7 +274,7 @@ function bindHome() {
   $('#kRec').addEventListener('click', toggleRec);
   $('#kFx').addEventListener('click', () => go('fx'));
   $('#casePill').addEventListener('click', openCasePicker);
-  $('#slotLayer').addEventListener('click', (e) => { if (e.target.closest('.slot-chip') && !W.inserting && S.insertedId) ejectChip(false); });
+  bindSlotDrag();
   // volume: drag along the light slider printed on the plate
   const kh = $('#hitVol');
   let kd = null;
@@ -363,19 +363,20 @@ async function insertCurrent() {
   saveSettings(); applyParams(); updateDriver(); drawGuide();
   if (VoxEngine.status.state === 'live') toast(`「${chip.name}」の声に切り替えました`);
 }
-async function ejectChip(quick) {
+const HOME_TOP = 42; // stage y of the wheel's centre card (wheel top 34 + card top 8)
+// Eject = one continuous motion: pop out of the slit, hang for a beat, then glide straight up into the
+// wheel's centre slot (the wheel turns the chip's home slot to the centre meanwhile) and hand over.
+async function ejectChip(quick, fromTop) {
   const id = S.insertedId;
   const sc = $('#slotChip');
   if (!id || !sc) { S.insertedId = null; removeSlotChip(); updateDriver(); return; }
   const deck = $('#deck');
   W.inserting = true;
   const i = W.list.findIndex((c) => c.id === id);
-  let rot = Promise.resolve();
   if (!quick && i >= 0 && i !== centerIndex()) {
     const n = W.cards.length;
-    rot = new Promise((r) => animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), r));
+    animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), null, 0.3);
   }
-  // ring sinks back into the slit, the slot kicks the chip up
   deck.classList.remove('loaded');
   $('#ringWrap').classList.remove('on');
   deck.classList.add('releasing');
@@ -383,26 +384,73 @@ async function ejectChip(quick) {
   VoxEngine.sfx('eject');
   ripple();
   const rest = restTop();
+  const cur = fromTop ?? rest;
   if (quick) {
-    await tween(sc, [{ transform: `translateY(${rest}px)`, opacity: 1 }, { transform: `translateY(${rest - 90}px)`, opacity: 0 }], 240, 'cubic-bezier(.2,.7,.3,1)');
+    await tween(sc, [{ transform: `translateY(${cur}px)`, opacity: 1 }, { transform: `translateY(${cur - 90}px)`, opacity: 0 }], 240, 'cubic-bezier(.2,.7,.3,1)');
     sc.remove(); deck.classList.remove('releasing');
     S.insertedId = null; W.inserting = false; layoutWheel(); updateDriver(); drawGuide();
     return;
   }
-  await tween(sc, [{ transform: `translateY(${rest}px)` }, { transform: `translateY(${rest - 26}px)` }], 160, 'cubic-bezier(.2,.9,.4,1)');
-  await rot;
-  // rise straight back up into its place in the wheel and hand over to the real card
-  const card = i >= 0 ? W.cards[i] : null;
-  const t = card ? stageRect(card.querySelector('.chip')) : { top: 40, left: CARD.left };
-  const dist = Math.max(40, rest - 26 - t.top);
-  await tween(sc, [{ transform: `translateY(${rest - 26}px)` }, { transform: `translateY(${t.top - 6}px)`, offset: 0.82 }, { transform: `translateY(${t.top}px)` }], 260 + dist * 0.7, 'cubic-bezier(.25,.75,.3,1)');
-  deck.classList.remove('releasing');
+  const dist = Math.max(60, cur - HOME_TOP);
+  const dur = S.reduceMotion ? 1 : Math.round(500 + dist * 0.7);
+  const popped = fromTop == null; // a drag already pulled it out, so skip the pop
+  const frames = popped ? [
+    { transform: `translateY(${cur}px)`, offset: 0, easing: 'cubic-bezier(.25,.8,.4,1)' },
+    { transform: `translateY(${cur - 32}px)`, offset: 0.17, easing: 'cubic-bezier(.4,.05,.15,1)' },
+    { transform: `translateY(${HOME_TOP}px)`, offset: 1 },
+  ] : [
+    { transform: `translateY(${cur}px)`, offset: 0, easing: 'cubic-bezier(.3,.6,.15,1)' },
+    { transform: `translateY(${HOME_TOP}px)`, offset: 1 },
+  ];
+  const a = sc.animate(frames, { duration: popped ? dur : Math.round(dur * 0.75), fill: 'forwards' });
+  setTimeout(() => deck.classList.remove('releasing'), 300);
+  try { await a.finished; } catch (e) {}
+  // hand over to the identical card in the wheel
+  cancelAnimationFrame(W.anim);
+  if (i >= 0) W.pos = i;
   S.insertedId = null;
   layoutWheel();
-  if (card) { card.classList.add('landing'); setTimeout(() => card.classList.remove('landing'), 500); }
+  const card = i >= 0 ? W.cards[i] : null;
+  if (card) { card.classList.add('landing'); setTimeout(() => card.classList.remove('landing'), 600); }
+  VoxEngine.sfx('tick');
   requestAnimationFrame(() => sc.remove());
   W.inserting = false;
   saveSettings(); applyParams(); updateDriver(); drawGuide();
+}
+
+/* drag a seated chip upward to pull it out (tap also works) */
+function bindSlotDrag() {
+  const layer = $('#slotLayer');
+  let d = null;
+  layer.addEventListener('pointerdown', (e) => {
+    const sc = e.target.closest('.slot-chip');
+    if (!sc || W.inserting || !S.insertedId) return;
+    d = { y0: e.clientY, moved: false, id: e.pointerId, sc, rest: restTop(), lt: performance.now(), ly: e.clientY, vy: 0 };
+    try { sc.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  layer.addEventListener('pointermove', (e) => {
+    if (!d || e.pointerId !== d.id) return;
+    const dy = (e.clientY - d.y0) / W.scale;
+    const now = performance.now();
+    d.vy = d.vy * 0.6 + (((e.clientY - d.ly) / W.scale) / Math.max(1, now - d.lt)) * 0.4;
+    d.ly = e.clientY; d.lt = now;
+    if (!d.moved && Math.abs(dy) < 6) return;
+    d.moved = true;
+    const up = Math.min(0, dy);
+    d.cur = d.rest + (up > -40 ? up : -40 + (up + 40) * 0.9) + Math.max(0, dy) * 0.12;
+    d.sc.style.transform = `translateY(${d.cur}px)`;
+    $('#deck').classList.toggle('armed', d.rest - d.cur > 36);
+  });
+  const end = (e) => {
+    if (!d || e.pointerId !== d.id) return;
+    const dd = d; d = null;
+    $('#deck').classList.remove('armed');
+    if (!dd.moved) { ejectChip(false); return; }
+    if (dd.rest - dd.cur > 46 || dd.vy < -0.5) ejectChip(false, dd.cur);
+    else tween(dd.sc, [{ transform: `translateY(${dd.cur}px)` }, { transform: `translateY(${dd.rest}px)` }], 220, 'cubic-bezier(.3,1.4,.5,1)');
+  };
+  layer.addEventListener('pointerup', end);
+  layer.addEventListener('pointercancel', end);
 }
 
 /* ---- guide light straight down from the wheel to the slit ---- */
@@ -493,6 +541,7 @@ function updateDriver() {
   $('#kFx').classList.toggle('on', S.fx.length > 0);
   const ic = { mon: S.monitor, rec, fx: S.fx.length > 0, out: !!st.sinkId };
   $$('#deck [data-ic]').forEach((s) => s.classList.toggle('on', !!ic[s.dataset.ic]));
+  $('#app').style.setProperty('--tint', chip ? chip.color : '#a487ff');
   $('#dkName').textContent = chip ? chip.name : 'メモリを挿入';
   $('#ringWrap').classList.toggle('on', !!chip && !W.inserting);
   updateVol();
