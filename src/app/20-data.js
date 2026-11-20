@@ -159,7 +159,8 @@ function chipHTML(c, opts = {}) {
       <div class="chip-pips">${[1, 2, 3].map((n) => `<i class="${n <= r ? 'on' : ''}"></i>`).join('')}</div>
       <div class="chip-grip"></div>
       <div class="chip-win">${chipPhotoHTML(c)}<i class="hud tl"></i><i class="hud br"></i><span class="kind">${esc(tag)}</span>${c.demo && !opts.noBadge ? '<span class="badge">SAMPLE</span>' : ''}</div>
-      <div class="chip-plate"><b class="nm">${esc(c.name)}</b><div class="prof">${profileLine(c.profile)}</div></div>
+      <div class="chip-plate"><b class="nm">${esc(c.name)}</b><div class="prof"><em class="kp">${esc(KIND_LABEL[c.kind] || 'MEMORY')}</em>${profileLine(c.profile)}</div></div>
+      <i class="chip-core"></i><i class="chip-notchlight"></i>
       <div class="chip-bar"></div>
       <div class="chip-pins"></div>
     </div></div>

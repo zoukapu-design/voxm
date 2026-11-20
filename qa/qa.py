@@ -13,7 +13,7 @@ async def layout_check(p, tag):
     r = await p.evaluate('''() => {
       const R = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom)]; };
       const main = R(document.querySelector('main')), nav = R(document.querySelector('.tabs')), hdr = R(document.querySelector('.top'));
-      const items = {}; for (const s of ['.case-bar', '.wheel .wcard.center', '#deck', '.ctrl', '#kConv', '#hitCore', '#hitVol']) items[s] = R(document.querySelector(s));
+      const items = {}; for (const s of ['.case-bar', '.wheel .wcard.center', '#deck', '.ctrl', '#kConv', '#hitVol']) items[s] = R(document.querySelector(s));
       return { main, nav, hdr, items, docW: document.documentElement.scrollWidth, winW: innerWidth, scale: getComputedStyle(document.querySelector('#stage')).getPropertyValue('--s') };
     }''')
     probs = []
@@ -66,7 +66,7 @@ async def main():
             print('recordings:', await p.evaluate('VOXM_DEBUG.S.recordings.map(r=>[r.name,r.mime,r.size])'))
             # tap another card while inserted -> swap
             await p.mouse.move(cx, cy); await p.mouse.down(); await p.mouse.move(cx + 130, cy, steps=8); await p.mouse.up(); await p.wait_for_timeout(900)
-            await p.click('.wcard.center'); await p.wait_for_timeout(1300)
+            await p.click('.wcard.center'); await p.wait_for_timeout(1800)
             print('swapped to:', await p.evaluate('VOXM_DEBUG.S.insertedId'))
             await p.screenshot(path=f'{OUT}/flow6_swapped.png')
             # FX

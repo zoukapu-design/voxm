@@ -81,7 +81,7 @@ function openChipSheet(id) {
   });
 }
 function deleteChip(c) {
-  if (S.insertedId === c.id) { S.insertedId = null; if ($('#chip3d')) { setChip3d(null); $('#chip3d').classList.remove('on'); } applyParams(); }
+  if (S.insertedId === c.id) { S.insertedId = null; removeSlotChip(); applyParams(); }
   S.chips = S.chips.filter((x) => x !== c);
   for (const k of S.cases) if (k.chipIds.includes(c.id)) { k.chipIds = k.chipIds.filter((x) => x !== c.id); saveCase(k); }
   if (c.builtin) { S.removedBuiltins = [...(S.removedBuiltins || []), c.id]; }
