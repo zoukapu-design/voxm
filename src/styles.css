@@ -449,3 +449,9 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .ctrl .cbtn.rec.on { background: rgba(255,77,140,.18); box-shadow: inset 0 0 0 1px rgba(255,111,174,.55); }
 .ctrl .cbtn.main { background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(226,220,240,.96)); }
 .ctrl .cbtn.main.on { background: linear-gradient(180deg, #b9a5ff, #7b5cff); }
+
+.wcard.landing .chip { animation: landIn .5s cubic-bezier(.2,.8,.3,1); }
+@keyframes landIn { 0% { opacity: 0; transform: translateY(-8px) scale(1.04); filter: brightness(1.7); } 45% { opacity: 1; } 100% { opacity: 1; transform: none; filter: none; } }
+.wcard.landing::before { content: ''; position: absolute; left: 10%; right: 10%; bottom: -14px; height: 18px; border-radius: 50%; background: radial-gradient(closest-side, rgba(230,220,255,.9), transparent); animation: landGlow .6s ease-out forwards; pointer-events: none; }
+@keyframes landGlow { from { opacity: 1; transform: scaleX(.6); } to { opacity: 0; transform: scaleX(1.4); } }
+.stage, .stage *, .fly-chip, .chip { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }

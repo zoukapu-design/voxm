@@ -376,12 +376,19 @@ async function flyPath(chip, from, to, { dur = 520, outbound = true } = {}) {
   // attitude of the seated chip (leans back and turns with the deck) vs. the flat wheel card
   const tiltTo = outbound ? [22, -16, -2] : [0, 0, 0], tiltFrom = outbound ? [0, 0, 0] : [22, -16, -2];
   const midX = A.x + (B.x - A.x) * 0.45 + (outbound ? -26 : 26), midY = Math.min(A.y, B.y) + (B.y - A.y) * 0.3 - 30;
-  const frames = [
-    kf(A, A.x, A.y, outbound ? 1.06 : 1, ...tiltFrom, { offset: 0 }),
-    kf(A, midX, midY, outbound ? 1.1 : (1 + k) / 2, (tiltFrom[0] + tiltTo[0]) / 2, (tiltFrom[1] + tiltTo[1]) / 2, outbound ? -6 : 6, { offset: 0.45 }),
+  const frames = outbound ? [
+    kf(A, A.x, A.y, 1.06, ...tiltFrom, { offset: 0 }),
+    kf(A, midX, midY, 1.1, (tiltFrom[0] + tiltTo[0]) / 2, (tiltFrom[1] + tiltTo[1]) / 2, -6, { offset: 0.45 }),
     kf(A, B.x, B.y, k, ...tiltTo, { offset: 1 }),
+  ] : [
+    // return trip: float up out of the deck, glide home on a wide arc, ease in and settle
+    kf(A, A.x, A.y, 1, ...tiltFrom, { offset: 0 }),
+    kf(A, A.x + (B.x - A.x) * 0.15, A.y - 34, 1.08, tiltFrom[0] * 0.6, tiltFrom[1] * 0.6, 4, { offset: 0.22 }),
+    kf(A, midX, midY - 10, (1 + k) / 2 * 1.06, 6, -4, 3, { offset: 0.55 }),
+    kf(A, B.x, B.y - 8, k * 1.04, 0, 0, 0, { offset: 0.86 }),
+    kf(A, B.x, B.y, k, 0, 0, 0, { offset: 1 }),
   ];
-  const easing = outbound ? 'cubic-bezier(.45,.05,.25,1)' : 'cubic-bezier(.3,.6,.2,1)';
+  const easing = outbound ? 'cubic-bezier(.45,.05,.25,1)' : 'cubic-bezier(.45,0,.25,1)';
   const ghosts = S.reduceMotion ? [] : [0.42, 0.24, 0.12].map((op, i) => {
     const g = flyClone(chip, from, 'ghost');
     g.style.opacity = op;
@@ -457,15 +464,23 @@ async function ejectChip(quick) {
   const deck = $('#deck');
   W.inserting = true;
   $('#hitChip').style.display = 'none';
+  const chip = chipById(id);
+  const i = W.list.findIndex((c) => c.id === id);
+  // bring the chip's home slot to the centre while the deck releases it
+  let rot = Promise.resolve();
+  if (!quick && i >= 0 && i !== centerIndex()) {
+    const n = W.cards.length;
+    rot = new Promise((r) => animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), r));
+  }
   // 1) hologram collapses into the lens
   deck.classList.add('collapsing');
   deck.classList.remove('loaded');
-  await sleep(S.reduceMotion ? 0 : 160);
-  // 2) release: the slot pushes the chip up
+  await sleep(S.reduceMotion ? 0 : 180);
+  // 2) release: the slot pushes the chip up and it hangs for a beat
   VoxEngine.sfx('eject');
   ripple();
   deck.classList.add('releasing');
-  await animateLift(c3, 0, quick ? 60 : DK.chipLift, quick ? 220 : 340, 'cubic-bezier(.15,.9,.3,1.25)');
+  await animateLift(c3, 0, quick ? 60 : DK.chipLift, quick ? 220 : 420, 'cubic-bezier(.15,.85,.3,1.15)');
   deck.classList.remove('releasing', 'collapsing');
   if (quick) {
     const r = c3.querySelector('.chip').getBoundingClientRect();
@@ -474,23 +489,24 @@ async function ejectChip(quick) {
     S.insertedId = null; W.inserting = false; layoutWheel(); updateDriver(); drawGuide();
     return;
   }
-  // 3) phase back to 2D and fly home to the wheel
-  const chip = chipById(id);
-  const i = W.list.findIndex((c) => c.id === id);
-  if (i >= 0 && i !== centerIndex()) {
-    const n = W.cards.length;
-    await new Promise((r) => animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), r));
-  }
+  await rot;
+  await sleep(S.reduceMotion ? 0 : 90);
+  // 3) phase back to a card and glide home
   const from = c3.querySelector('.chip').getBoundingClientRect();
-  const target = i >= 0 ? W.cards[i].querySelector('.chip').getBoundingClientRect() : null;
-  burst(from.left + from.width / 2, from.top + from.height / 2, from.width * 1.5);
-  c3.classList.remove('on');
+  const card = i >= 0 ? W.cards[i] : null;
+  const target = card ? card.querySelector('.chip').getBoundingClientRect() : null;
+  burst(from.left + from.width / 2, from.top + from.height / 2, from.width * 1.3);
+  c3.animate([{ opacity: 1 }, { opacity: 0 }], { duration: S.reduceMotion ? 1 : 140, fill: 'forwards' }).onfinish = () => { c3.classList.remove('on'); setChip3d(null); c3.getAnimations().forEach((x) => x.cancel()); };
   if (chip && target) {
-    const { main } = await flyPath(chip, from, target, { dur: 440, outbound: false });
-    S.insertedId = null; layoutWheel();
-    main.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' }).onfinish = () => main.remove();
+    const { main } = await flyPath(chip, from, target, { dur: 680, outbound: false });
+    // 4) land: the wheel card fades in under the arriving clone, then the clone dissolves
+    S.insertedId = null;
+    layoutWheel();
+    card.classList.add('landing');
+    setTimeout(() => card.classList.remove('landing'), 520);
+    VoxEngine.sfx('tick');
+    main.animate([{ opacity: 1 }, { opacity: 0 }], { duration: S.reduceMotion ? 1 : 260, easing: 'ease-out', fill: 'forwards' }).onfinish = () => main.remove();
   }
-  setChip3d(null);
   S.insertedId = null;
   W.inserting = false;
   saveSettings(); applyParams();
