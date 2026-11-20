@@ -1,13 +1,14 @@
 /* ===== HOME: memory wheel → HOLO DECK (straight insertion) ===== */
-const W = { pos: 0, list: [], cards: [], drag: null, dragCard: null, dragY: 0, scale: 1, anim: 0, inserting: false, lastCenter: -1, lv: 0, flyingId: null, bootBay: 1 };
+const W = { pos: 0, list: [], cards: [], drag: null, dragCard: null, dragY: 0, scale: 1, anim: 0, inserting: false, lastCenter: -1, lv: 0, flyingId: null, outId: null, bootBase: 0 };
 const STEP = 104;
-// The deck faces the viewer. One long rail slit holds three bays; the centre bay sits exactly under the
-// wheel's centre card, so a chip always drops straight in. Seated chips slide sideways along the rail.
-const DK = { W: 350, H: 176, R: 58, plateZ: 34, slitY: 44, bayX: [67, 175, 283] };
+// The deck faces the viewer; one small slit sits exactly under the wheel's centre card, so a chip drops straight in.
+// Inserted chips are drawn fully inside (absorbed) and show up as icons on the deck's tilted display panel (up to 3).
+// Tapping an icon sends that chip back up out of the slit, where it can be pulled out.
+const DK = { W: 350, H: 236, R: 60, plateZ: 34, slitY: 46, slitW: 98, panelY: 214, panelH: 92 };
 const CARD = { left: 130, w: 130, h: 180 };
-const SEAT = { k: 0.6, show: 92 }; // seated chips: scale, and how much stays above the slit
+const SEAT = { k: 0.6, show: 86 }; // chip size in the slit, and how much stays above it when it comes back up
+const SLOT_X = 195;
 let SLIT_Y = 400; // slit line in stage px (measured)
-let BAY_X = [95, 195, 295]; // bay centres in stage px (measured)
 
 function stageHTML() {
   return `<div class="stage-host" id="stageHost"><div class="stage" id="stage">
@@ -21,7 +22,8 @@ function stageHTML() {
     <svg class="guide" id="guide" viewBox="0 0 390 640" aria-hidden="true"><defs><linearGradient id="gdg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8b4ff" stop-opacity="0"/><stop offset=".4" stop-color="#d6c8ff" stop-opacity=".9"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><path id="guidePath" d=""/><path id="guideBeam" d=""/><circle id="guideDot" r="3"/></svg>
     <div class="deck-floor"></div>
     <div class="deck-scene"><div class="deck-obj deck" id="deck"></div></div>
-    <div class="slot-layer" id="slotLayer"><canvas class="spec" id="specCv" width="780" height="360"></canvas>${[0, 1, 2].map((i) => `<div class="bay-holo" data-bay="${i}"><svg viewBox="0 0 78 108" aria-hidden="true"><path d="M4 .75H60L77.25 18V108H.75V4Z"/></svg><i class="scan"></i><b>0${i + 1}</b><span>EMPTY</span></div>`).join('')}</div>
+    <div class="slot-layer" id="slotLayer"><canvas class="spec" id="specCv" width="780" height="360"></canvas></div>
+    ${[0, 1, 2].map((i) => `<button class="hit hit-cell" data-cell="${i}" aria-label="メモリ ${i + 1} を取り出す"></button>`).join('')}
     <div class="hit" id="hitVol" role="slider" aria-label="出力音量（左右にドラッグ）" tabindex="0"></div>
     <div class="ctrl">
       <button class="cbtn main" id="kConv"><i class="dot"></i><b id="kConvTxt">変換 ON</b></button>
@@ -58,24 +60,21 @@ function buildDeck() {
   slab(o, { w, h, r: R, z0: 27, depth: 7, n: 7, inset: (t) => 3 * (1 - t), bg: (t) => `linear-gradient(90deg,rgba(150,140,190,.7),rgba(235,230,250,${(0.7 + t * 0.2).toFixed(2)}) 34%,#ffffff 48%,rgba(205,198,228,.8) 70%,rgba(120,110,160,.7))` });
   dEl('L', `left:0;top:0;width:${w}px;height:${h}px;border-radius:${R}px;transform:translateZ(27px);box-shadow:0 0 0 1px rgba(214,200,255,.9),0 0 16px 2px rgba(200,180,255,.55)`, o);
   const top = dEl('L', `left:0;top:0;width:${w}px;height:${h}px;border-radius:${R}px;transform:translateZ(${DK.plateZ}px);background:radial-gradient(110% 90% at 30% 0%,#ffffff 0%,#f4f1fa 42%,#e2ddee 100%);box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.95),inset 0 0 0 3px rgba(200,180,255,.3),inset 0 -8px 18px rgba(150,130,210,.25)`, o);
-  // under-glow per bay (lit in the seated chip's colour)
-  DK.bayX.forEach((x, i) => dEl('face dk-spill', `inset:auto;left:${x - 64}px;top:${DK.slitY - 34}px;width:128px;height:68px`, top).dataset.bay = i);
-  // the rail slit: one long opening, three bays
-  dEl('face dk-slit', `inset:auto;left:16px;top:${DK.slitY - 4}px;width:${w - 32}px;height:8px;border-radius:4px`, top, '<i class="rail"></i>');
-  DK.bayX.forEach((x, i) => {
-    dEl('face dk-pt', `inset:auto;left:${x - 1}px;top:${DK.slitY - 1}px;width:2px;height:2px`, top).dataset.bay = i;
-    dEl('face dk-bay', `inset:auto;left:${x - 34}px;top:${DK.slitY + 9}px;width:68px;height:12px`, top, `<i></i><b>0${i + 1}</b>`).dataset.bay = i;
-    dEl('face dk-ripple', `inset:auto;left:${x - 36}px;top:${DK.slitY - 36}px;width:72px;height:72px`, top).id = 'dkRipple' + i;
-  });
-  dEl('face dk-lip', `inset:auto;left:${w / 2 - 110}px;top:${h - 13}px;width:220px;height:2px;border-radius:2px`, top, '<i></i>');
-  // light UI printed on the plate (front left / front right)
-  top.insertAdjacentHTML('beforeend', `<div class="dk-ui dk-ui-l">
-    <div class="dk-status" id="dkStatus">VOICE CORE · STANDBY</div>
-    <div class="dk-name" id="dkName">メモリを挿入</div>
-    <div class="dk-info" id="dkInfo">—</div></div>
-    <div class="dk-ui dk-ui-r">
-    <div class="dk-vol" id="dkVol"><i id="dkVolFill"></i><b id="dkVolKnob"></b></div>
-    <div class="dk-icons">${DK_ICONS.map(([k, d]) => `<svg viewBox="0 0 24 24" class="${k}" data-ic="${k}">${d}</svg>`).join('')}</div></div>`);
+  // slit + its glow
+  const sx = w / 2 - DK.slitW / 2;
+  dEl('face dk-spill', `inset:auto;left:${w / 2 - 80}px;top:${DK.slitY - 36}px;width:160px;height:72px`, top);
+  dEl('face dk-slit', `inset:auto;left:${sx}px;top:${DK.slitY - 4}px;width:${DK.slitW}px;height:8px;border-radius:4px`, top, '<i class="rail"></i>');
+  dEl('face dk-collar', `inset:auto;left:${sx - 14}px;top:${DK.slitY - 15}px;width:${DK.slitW + 28}px;height:30px;border-radius:15px`, top);
+  dEl('face dk-ripple', `inset:auto;left:${w / 2 - 36}px;top:${DK.slitY - 36}px;width:72px;height:72px`, top).id = 'dkRipple';
+  dEl('face dk-lip', `inset:auto;left:${w / 2 - 50}px;top:${DK.slitY + 20}px;width:100px;height:2px;border-radius:2px`, top, '<i></i>');
+  // display panel: tilts up from the front of the plate toward the viewer
+  top.style.transformStyle = 'preserve-3d';
+  const ph = DK.panelH;
+  dEl('face dk-pbase', `inset:auto;left:28px;top:${DK.panelY - 12}px;width:${w - 56}px;height:14px;border-radius:7px`, top);
+  const panel = dEl('face dk-panel', `inset:auto;left:30px;top:${DK.panelY - ph}px;width:${w - 60}px;height:${ph}px;border-radius:16px;transform-origin:50% 100%;transform:rotateX(-58deg)`, top);
+  panel.innerHTML = `<div class="dp-top"><span class="dk-status" id="dkStatus">VOICE CORE · STANDBY</span><span class="dk-icons">${DK_ICONS.map(([k, d]) => `<svg viewBox="0 0 24 24" class="${k}" data-ic="${k}">${d}</svg>`).join('')}</span></div>
+    <div class="dp-cells">${[0, 1, 2].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div><div class="dp-tx"><b></b><span>EMPTY</span></div></div>`).join('')}</div>
+    <div class="dp-bot"><span class="dk-info" id="dkInfo">—</span><span class="dk-vol" id="dkVol"><i id="dkVolFill"></i><b id="dkVolKnob"></b></span></div>`;
 }
 
 RENDER.home = () => {
@@ -113,21 +112,20 @@ function placeHits() {
     const r = stageRect(slit);
     if (r.height) {
       SLIT_Y = Math.round(r.top + r.height * 0.55);
-      $$('#deck .dk-pt').forEach((pt) => { const q = stageRect(pt); BAY_X[+pt.dataset.bay] = Math.round((q.left + q.width / 2) * 10) / 10; });
       $('#slotLayer').style.height = SLIT_Y + 'px';
       $('#specCv').style.top = (SLIT_Y - 180) + 'px';
-      if (!W.inserting) $$('#slotLayer .slot-chip').forEach((sc) => { sc.style.transform = seatT(+sc.dataset.bay, restTop()); });
-      $$('#slotLayer .bay-holo').forEach((h) => { h.style.transform = `translate(${(BAY_X[+h.dataset.bay] - 39).toFixed(1)}px,${restTop()}px)`; });
+      if (!W.inserting) $$('#slotLayer .slot-chip').forEach((sc) => { sc.style.transform = seatT(restTop()); });
     }
   }
   const hit = $('#hitVol'), vol = $('#dkVol');
   if (hit && vol) { const r = stageRect(vol); const pad = 14; Object.assign(hit.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' }); }
+  $$('.hit-cell').forEach((hc) => { const c = $(`#deck .dp-cell[data-cell="${hc.dataset.cell}"]`); if (!c) return; const r = stageRect(c); Object.assign(hc.style, { left: r.left - 3 + 'px', top: r.top - 6 + 'px', width: r.width + 6 + 'px', height: r.height + 12 + 'px' }); });
   drawGuide();
 }
 const restTop = () => SLIT_Y - SEAT.show;
 // transform of a chip whose top-centre sits at (x, top), scaled by k (transform-origin: top centre)
 const chipT = (x, top, k) => `translate(${(x - CARD.w / 2).toFixed(1)}px,${top.toFixed(1)}px) scale(${k.toFixed(4)})`;
-const seatT = (bay, top, k = SEAT.k) => chipT(BAY_X[bay], top, k);
+const seatT = (top, k = SEAT.k) => chipT(SLOT_X, top, k);
 
 /* ---- wheel ---- */
 function rebuildWheel() {
@@ -175,9 +173,9 @@ function layoutWheel() {
     el.style.setProperty('--sheen', (50 + d * 70).toFixed(1) + '%');
     el.classList.toggle('center', a < 0.5);
     const gid = W.list[i] && W.list[i].id;
-    const gh = !!gid && (isSeated(gid) || gid === W.flyingId);
+    const gh = !!gid && (isSeated(gid) || gid === W.flyingId || gid === W.outId);
     el.classList.toggle('ghost', gh);
-    if (gh) { const b = S.slots.indexOf(gid); const g = el.querySelector('.gslot'); const v = b >= 0 ? '0' + (b + 1) : ''; if (g.textContent !== v) g.textContent = v; }
+    if (gh) { const b = S.slots.indexOf(gid); const g = el.querySelector('.gslot'); const v = b >= 0 ? '0' + (b + 1) : gid === W.outId ? 'OUT' : ''; if (g.textContent !== v) g.textContent = v; }
   });
   const ci = centerIndex();
   if (ci !== W.lastCenter && ci >= 0) {
@@ -258,7 +256,7 @@ function bindHome() {
       if (!D.card) return;
       const i = +D.card.dataset.i;
       if (i === centerIndex()) {
-        if (D.card.classList.contains('ghost')) ejectChip(W.list[i].id);
+        if (D.card.classList.contains('ghost')) { const gid = W.list[i].id; if (gid === W.outId) ejectChip(); else if (isSeated(gid)) recallChip(S.slots.indexOf(gid)); }
         else insertCurrent();
       } else {
         const n = W.cards.length;
@@ -306,160 +304,163 @@ function bindHome() {
   requestAnimationFrame(screenLoop);
 }
 
-/* ---- seated chips (2D, in a clip layer whose bottom edge is the slit) ---- */
-const slotEl = (id) => $$('#slotLayer .slot-chip').find((e) => e.dataset.id === id) || null;
-function makeSlotChip(chip, bay, transform) {
-  const old = slotEl(chip.id); if (old) old.remove();
+/* ---- the chip in the slit (2D, in a clip layer whose bottom edge is the slit) ---- */
+const slotEl = () => $('#slotLayer .slot-chip');
+function makeSlotChip(chip, transform) {
+  removeSlotChip();
   const sc = document.createElement('div');
   sc.className = 'slot-chip';
-  sc.dataset.id = chip.id; sc.dataset.bay = bay;
+  sc.dataset.id = chip.id;
   sc.style.transform = transform;
   sc.setAttribute('aria-label', chip.name + '（タップか上に引いて取り出す）');
   sc.innerHTML = chipHTML(chip, { noBadge: true });
   $('#slotLayer').append(sc);
   return sc;
 }
-function removeSlotChip(id) { $$('#slotLayer .slot-chip').forEach((e) => { if (!id || e.dataset.id === id) e.remove(); }); }
+function removeSlotChip(id) { $$('#slotLayer .slot-chip').forEach((e) => { if (!id || e.dataset.id === id) e.remove(); }); if (id && W.outId === id) W.outId = null; }
 function syncSlotChips() {
   if (W.inserting) return;
-  const rest = restTop();
-  $$('#slotLayer .slot-chip').forEach((e) => { if (!isSeated(e.dataset.id)) e.remove(); });
-  S.slots.forEach((id, bay) => {
-    const chip = chipById(id); if (!chip) return;
-    let sc = slotEl(id);
-    if (sc) { sc.innerHTML = chipHTML(chip, { noBadge: true }); sc.dataset.bay = bay; sc.style.transform = seatT(bay, rest); }
-    else sc = makeSlotChip(chip, bay, seatT(bay, rest));
-    sc.querySelector('.chip').classList.add('active');
-  });
+  const c = chipById(W.outId);
+  if (!c) { W.outId = null; removeSlotChip(); return; }
+  let sc = slotEl();
+  if (!sc || sc.dataset.id !== c.id) sc = makeSlotChip(c, seatT(restTop()));
+  else { sc.innerHTML = chipHTML(c, { noBadge: true }); sc.style.transform = seatT(restTop()); }
+  sc.querySelector('.chip').classList.add('active');
 }
-function ripple(bay = 1) {
-  const r = $('#dkRipple' + bay); if (!r || S.reduceMotion) return;
+function ripple() {
+  const r = $('#dkRipple'); if (!r || S.reduceMotion) return;
   r.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(3)', opacity: 0 }], { duration: 650, easing: 'cubic-bezier(.2,.8,.3,1)' });
 }
-function contactFx(bay = 1) {
+function thunk(snd = 'insert') {
   const d = $('#deck');
-  VoxEngine.sfx('insert');
+  VoxEngine.sfx(snd);
   d.classList.remove('thunk'); void d.offsetWidth; d.classList.add('thunk');
-  ripple(bay);
+  ripple();
   try { navigator.vibrate && navigator.vibrate(18); } catch (e) {}
 }
 function tween(el, frames, dur, easing) {
   const a = el.animate(frames, { duration: S.reduceMotion ? 1 : dur, easing, fill: 'forwards' });
   return a.finished.catch(() => {}).then(() => { const last = frames[frames.length - 1]; for (const k in last) if (k !== 'offset' && k !== 'easing') el.style[k] = last[k]; try { a.cancel(); } catch (e) {} });
 }
-function syncHolos() {
-  const c = W.list[centerIndex()];
-  const canDrop = c && !isSeated(c.id);
-  $$('#slotLayer .bay-holo').forEach((h) => {
-    const b = +h.dataset.bay;
-    h.classList.toggle('off', !!S.slots[b]);
-    h.classList.toggle('target', b === 1 && !S.slots[1] && !!canDrop);
-  });
-}
-function lightBay(bay) { const e = $(`#deck .dk-bay[data-bay="${bay}"]`); if (!e) return; e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); }
+function cellFx(i, cls) { const e = $(`#deck .dp-cell[data-cell="${i}"]`); if (!e) return; e.classList.remove('pop', 'send'); void e.offsetWidth; e.classList.add(cls); }
+const sleep2 = (ms) => new Promise((r) => setTimeout(r, S.reduceMotion ? 0 : ms));
 
-/* Insert: the centre card always drops straight down into the centre bay. If that bay is taken, its chip
-   first slides along the rail to a free bay; if all three are taken, it is swapped out. */
+// A chip back in the slit sinks out of sight (absorbed) and lands in panel cell `cell`.
+async function absorb(sc, from, cell, id) {
+  const deck = $('#deck');
+  deck.classList.add('absorbing');
+  await tween(sc, [{ transform: seatT(from) }, { transform: seatT(SLIT_Y + 2) }], 360, 'cubic-bezier(.5,0,.3,1)');
+  sc.remove();
+  deck.classList.remove('absorbing');
+  S.slots[cell] = id;
+  thunk('tick');
+  updateDriver(); cellFx(cell, 'pop');
+}
+
+/* Insert: the centre card drops straight down into the slit, touches, and is drawn in. */
 async function insertCurrent() {
   const ci = centerIndex();
   const chip = W.list[ci];
-  if (!chip || W.inserting || isSeated(chip.id)) return;
-  W.inserting = true;
-  W.bootBase = seatedChips().length ? 1 : 0; W.bootT = performance.now() + 1e7; // bars wait for the chip to seat
-  const deck = $('#deck');
-  const rest = restTop();
-  const occ = S.slots[1];
-  if (occ) {
-    const el = slotEl(occ);
-    const free = !S.slots[0] ? 0 : !S.slots[2] ? 2 : -1;
-    if (free >= 0) {
-      S.slots[free] = occ; S.slots[1] = null;
-      if (el) {
-        el.dataset.bay = free;
-        tween(el, [{ transform: seatT(1, rest) }, { transform: seatT(1, rest + 4), offset: 0.15 }, { transform: seatT(free, rest + 4), offset: 0.8 }, { transform: seatT(free, rest) }], 340, 'cubic-bezier(.45,0,.2,1)')
-          .then(() => { lightBay(free); });
-      }
-      VoxEngine.sfx('tick');
-    } else {
-      S.slots[1] = null; // rack full: swap the centre chip out
-      if (el) { el.querySelector('.chip').classList.remove('active'); tween(el, [{ transform: seatT(1, rest), opacity: 1 }, { transform: seatT(1, rest - 70), opacity: 0 }], 240, 'cubic-bezier(.2,.7,.3,1)').then(() => el.remove()); }
-      VoxEngine.sfx('eject');
-      toast(`「${chipById(occ)?.name || ''}」と入れ替えました`);
-    }
-  }
+  if (!chip || W.inserting || isSeated(chip.id) || chip.id === W.outId) return;
+  if (W.outId) { await ejectChip(null, true); } // a chip left standing in the slit makes way
+  const cell = S.slots.indexOf(null);
   const card = W.cards[ci];
+  if (cell < 0) {
+    toast('メモリは3つまで。パネルのアイコンをタップして1つ取り出してね');
+    card.animate([{ transform: card.style.transform }, { transform: card.style.transform + ' translateY(-14px)' }, { transform: card.style.transform }], { duration: 320, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+    $('#deck').animate([{ filter: 'none' }, { filter: 'drop-shadow(0 0 10px #ff6b81)' }, { filter: 'none' }], 500);
+    return;
+  }
+  W.inserting = true;
+  W.bootBase = seatedChips().length ? 1 : 0; W.bootT = performance.now() + 1e7;
+  const deck = $('#deck');
   const r = stageRect(card.querySelector('.chip'));
   card.classList.remove('dragging');
   W.dragCard = null; W.dragY = 0;
-  S.slots[1] = chip.id;
   const x0 = r.left + r.width / 2, k0 = r.width / CARD.w;
-  const sc = makeSlotChip(chip, 1, chipT(x0, r.top, k0));
-  layoutWheel(); // the wheel slot turns into a ghost; the identical card now lives in the slot layer
-  drawGuide(); syncHolos();
+  W.flyingId = chip.id;
+  const sc = makeSlotChip(chip, chipT(x0, r.top, k0));
+  layoutWheel(); drawGuide();
   deck.classList.add('armed');
-  const dist = Math.max(40, rest - r.top);
-  // drop straight down, shrinking into the deck's depth (pulled in), then seat with a short spring
-  await tween(sc, [{ transform: chipT(x0, r.top, k0) }, { transform: seatT(1, rest + 6) }], 190 + dist * 0.75, 'cubic-bezier(.55,0,.85,.45)');
-  contactFx(1); lightBay(1);
+  const contact = SLIT_Y - CARD.h * SEAT.k + 8; // bottom edge just inside the slit
+  const dist = Math.max(40, contact - r.top);
+  await tween(sc, [{ transform: chipT(x0, r.top, k0) }, { transform: seatT(contact) }], 190 + dist * 0.72, 'cubic-bezier(.55,0,.85,.45)');
   deck.classList.remove('armed');
+  thunk('insert');
   sc.querySelector('.chip').classList.add('active');
-  await tween(sc, [{ transform: seatT(1, rest + 6) }, { transform: seatT(1, rest - 3), offset: 0.55 }, { transform: seatT(1, rest) }], 260, 'ease-out');
-  W.bootT = performance.now(); W.bootBay = 1;
+  await sleep2(70);
+  await absorb(sc, contact, cell, chip.id);
+  W.flyingId = null;
+  W.bootT = performance.now();
   deck.classList.add('booting');
   setTimeout(() => deck.classList.remove('booting'), 900);
   W.inserting = false;
-  saveSettings(); applyParams(); updateDriver(); drawGuide();
+  saveSettings(); applyParams(); layoutWheel(); updateDriver(); drawGuide();
   if (VoxEngine.status.state === 'live') toast(seatedChips().length > 1 ? `「${seatedName()}」をミックス中` : `「${chip.name}」の声に切り替えました`);
 }
 
+/* Tap an icon on the panel: that chip rises back out of the slit, ready to be pulled out. */
+async function recallChip(cell) {
+  const id = S.slots[cell];
+  const chip = chipById(id);
+  if (!chip || W.inserting) return;
+  W.inserting = true;
+  const deck = $('#deck');
+  cellFx(cell, 'send');
+  if (W.outId) { // the chip already standing in the slit goes back in, into the cell this one leaves
+    const prev = W.outId, psc = slotEl();
+    S.slots[cell] = null; W.outId = null;
+    if (psc) { psc.querySelector('.chip').classList.remove('active'); await absorb(psc, restTop(), cell, prev); }
+    else S.slots[cell] = prev;
+  } else S.slots[cell] = null;
+  W.outId = chip.id;
+  applyParams(); updateDriver(); layoutWheel();
+  VoxEngine.sfx('eject'); ripple();
+  deck.classList.add('releasing');
+  const rest = restTop();
+  const sc = makeSlotChip(chip, seatT(SLIT_Y + 2));
+  sc.querySelector('.chip').classList.add('active');
+  await sleep2(120);
+  await tween(sc, [{ transform: seatT(SLIT_Y + 2) }, { transform: seatT(rest - 7), offset: 0.7 }, { transform: seatT(rest) }], 460, 'cubic-bezier(.2,.75,.3,1)');
+  deck.classList.remove('releasing');
+  W.inserting = false;
+  saveSettings(); drawGuide();
+}
+
 const HOME_TOP = 42; // stage y of the wheel's centre card (wheel top 34 + card top 8)
-// Eject one chip: it pops out of its bay, then glides up into the wheel's centre slot in one motion
-// (the wheel turns that chip's home slot to the centre meanwhile) and hands over to the wheel card.
-async function ejectChip(id, quick, fromTop) {
-  id = id || S.slots[1] || S.slots.find(Boolean);
-  const bay = S.slots.indexOf(id);
-  const sc = id && slotEl(id);
-  if (bay < 0 || !sc || W.inserting) { if (bay >= 0 && !sc) { S.slots[bay] = null; updateDriver(); } return; }
+// Pull the standing chip out: it glides straight up into the wheel's centre slot (the wheel turns its home there).
+async function ejectChip(_id, quick, fromTop) {
+  const id = W.outId; const sc = slotEl();
+  if (!id || !sc || (W.inserting && !quick)) return;
   const deck = $('#deck');
   W.inserting = true;
-  S.slots[bay] = null; W.flyingId = id; // the voice drops this chip right away; the wheel keeps its ghost until hand-over
-  applyParams();
+  W.outId = null; W.flyingId = id;
   const i = W.list.findIndex((c) => c.id === id);
   if (!quick && i >= 0 && i !== centerIndex()) {
     const n = W.cards.length;
     animateTo(Math.round(W.pos + (n >= 4 ? wrapD(i - W.pos, n) : i - W.pos)), null, 0.3);
   }
-  deck.classList.add('releasing');
   sc.querySelector('.chip').classList.remove('active');
-  VoxEngine.sfx('eject');
-  ripple(bay);
-  updateDriver(); syncHolos();
-  const rest = restTop();
-  const cur = fromTop ?? rest;
-  const done = () => { W.flyingId = null; W.inserting = false; deck.classList.remove('releasing'); saveSettings(); applyParams(); layoutWheel(); updateDriver(); drawGuide(); };
+  const rest = restTop(), cur = fromTop ?? rest;
+  const done = () => { W.flyingId = null; W.inserting = false; saveSettings(); layoutWheel(); updateDriver(); drawGuide(); };
   if (quick) {
-    await tween(sc, [{ transform: seatT(bay, cur), opacity: 1 }, { transform: seatT(bay, cur - 80), opacity: 0 }], 240, 'cubic-bezier(.2,.7,.3,1)');
+    await tween(sc, [{ transform: seatT(cur), opacity: 1 }, { transform: seatT(cur - 80), opacity: 0 }], 220, 'cubic-bezier(.2,.7,.3,1)');
     sc.remove(); done(); return;
   }
+  VoxEngine.sfx('eject');
   const hx = CARD.left + CARD.w / 2;
-  const dist = Math.max(60, cur - HOME_TOP + Math.abs(BAY_X[bay] - hx) * 0.5);
-  const dur = S.reduceMotion ? 1 : Math.round(520 + dist * 0.7);
-  const popped = fromTop == null; // a drag already pulled it out, so skip the pop
-  // rise first, then drift sideways to the centre: a gentle curve instead of a flat diagonal
-  const mid = (t, ty, tk) => chipT(BAY_X[bay] + (hx - BAY_X[bay]) * t, cur - 32 + (HOME_TOP - cur + 32) * ty, SEAT.k + (1 - SEAT.k) * tk);
-  const frames = popped ? [
-    { transform: seatT(bay, cur), offset: 0, easing: 'cubic-bezier(.25,.8,.4,1)' },
-    { transform: seatT(bay, cur - 32, SEAT.k + 0.03), offset: 0.17, easing: 'cubic-bezier(.45,.05,.55,.95)' },
-    { transform: mid(0.4, 0.62, 0.55), offset: 0.6, easing: 'cubic-bezier(.3,.5,.2,1)' },
+  const dist = Math.max(60, cur - HOME_TOP);
+  const dur = S.reduceMotion ? 1 : Math.round(460 + dist * 0.7);
+  const frames = fromTop == null ? [
+    { transform: seatT(cur), offset: 0, easing: 'cubic-bezier(.25,.8,.4,1)' },
+    { transform: seatT(cur - 26, SEAT.k + 0.03), offset: 0.16, easing: 'cubic-bezier(.45,.05,.55,.95)' },
     { transform: chipT(hx, HOME_TOP, 1), offset: 1 },
   ] : [
-    { transform: seatT(bay, cur), offset: 0, easing: 'cubic-bezier(.3,.6,.15,1)' },
+    { transform: seatT(cur), offset: 0, easing: 'cubic-bezier(.3,.6,.15,1)' },
     { transform: chipT(hx, HOME_TOP, 1), offset: 1 },
   ];
-  const a = sc.animate(frames, { duration: popped ? dur : Math.round(dur * 0.75), fill: 'forwards' });
-  setTimeout(() => deck.classList.remove('releasing'), 300);
+  const a = sc.animate(frames, { duration: fromTop == null ? dur : Math.round(dur * 0.75), fill: 'forwards' });
   try { await a.finished; } catch (e) {}
-  // hand over to the identical card in the wheel
   cancelAnimationFrame(W.anim);
   if (i >= 0) W.pos = i;
   W.flyingId = null;
@@ -472,14 +473,14 @@ async function ejectChip(id, quick, fromTop) {
   done();
 }
 
-/* drag any seated chip upward to pull it out (a tap also ejects it) */
+/* drag the standing chip upward to pull it out (a tap also pulls it out) */
 function bindSlotDrag() {
   const layer = $('#slotLayer');
   let d = null;
   layer.addEventListener('pointerdown', (e) => {
     const sc = e.target.closest('.slot-chip');
-    if (!sc || W.inserting || !isSeated(sc.dataset.id)) return;
-    d = { y0: e.clientY, moved: false, id: e.pointerId, sc, cid: sc.dataset.id, bay: +sc.dataset.bay, rest: restTop(), lt: performance.now(), ly: e.clientY, vy: 0 };
+    if (!sc || W.inserting || sc.dataset.id !== W.outId) return;
+    d = { y0: e.clientY, moved: false, id: e.pointerId, sc, rest: restTop(), lt: performance.now(), ly: e.clientY, vy: 0 };
     d.cur = d.rest;
     try { sc.setPointerCapture(e.pointerId); } catch (err) {}
   });
@@ -493,29 +494,27 @@ function bindSlotDrag() {
     d.moved = true;
     const up = Math.min(0, dy);
     d.cur = d.rest + (up > -36 ? up : -36 + (up + 36) * 0.9) + Math.max(0, dy) * 0.1;
-    d.sc.style.transform = seatT(d.bay, d.cur);
-    $('#deck').classList.toggle('armed', d.rest - d.cur > 30);
+    d.sc.style.transform = seatT(d.cur);
   });
   const end = (e) => {
     if (!d || e.pointerId !== d.id) return;
     const dd = d; d = null;
-    $('#deck').classList.remove('armed');
-    if (!dd.moved) { ejectChip(dd.cid); return; }
-    if (dd.rest - dd.cur > 40 || dd.vy < -0.5) ejectChip(dd.cid, false, dd.cur);
-    else tween(dd.sc, [{ transform: seatT(dd.bay, dd.cur) }, { transform: seatT(dd.bay, dd.rest) }], 220, 'cubic-bezier(.3,1.4,.5,1)');
+    if (!dd.moved) { ejectChip(); return; }
+    if (dd.rest - dd.cur > 36 || dd.vy < -0.5) ejectChip(null, false, dd.cur);
+    else tween(dd.sc, [{ transform: seatT(dd.cur) }, { transform: seatT(dd.rest) }], 220, 'cubic-bezier(.3,1.4,.5,1)');
   };
   layer.addEventListener('pointerup', end);
   layer.addEventListener('pointercancel', end);
+  $$('.hit-cell').forEach((b) => b.addEventListener('click', () => { const i = +b.dataset.cell; if (S.slots[i]) recallChip(i); }));
 }
 
-/* ---- guide light straight down from the wheel to the centre bay ---- */
+/* ---- guide light straight down from the wheel to the slit ---- */
 function drawGuide() {
   const g = $('#guide'); if (!g) return;
   const c = W.list[centerIndex()];
-  const show = c && !isSeated(c.id) && !W.inserting;
+  const show = c && !isSeated(c.id) && c.id !== W.outId && !W.inserting && S.slots.includes(null);
   g.classList.toggle('show', !!show);
-  syncHolos();
-  const x = BAY_X[1], y0 = 226, y1 = SLIT_Y - 4;
+  const x = SLOT_X, y0 = 226, y1 = SLIT_Y - 4;
   $('#guidePath').setAttribute('d', `M${x} ${y0} L${x} ${y1}`);
   const k = clamp((W.dragY || 0) / 90, 0, 1);
   g.style.setProperty('--k', k.toFixed(3));
@@ -599,17 +598,22 @@ function updateDriver() {
   $('#kFx').classList.toggle('on', S.fx.length > 0);
   const ic = { mon: S.monitor, rec, fx: S.fx.length > 0, out: !!st.sinkId };
   $$('#deck [data-ic]').forEach((s) => s.classList.toggle('on', !!ic[s.dataset.ic]));
-  // bays: LED + under-glow in each seated chip's colour
-  S.slots.forEach((id, bay) => {
-    const c = chipById(id);
-    $$(`#deck [data-bay="${bay}"]`).forEach((e) => { e.classList.toggle('on', !!c); if (c) e.style.setProperty('--bc', c.color); });
+  // panel cells: one icon per absorbed chip
+  S.slots.forEach((id, i) => {
+    const c = chipById(id), cell = $(`#deck .dp-cell[data-cell="${i}"]`); if (!cell) return;
+    const key = c ? c.id + '|' + c.name + '|' + c.color + '|' + (c.photo || c.art || '') : '';
+    if (cell.dataset.key !== key) {
+      cell.dataset.key = key;
+      cell.classList.toggle('on', !!c);
+      cell.style.setProperty('--c', c ? c.color : '#a487ff');
+      cell.querySelector('.dp-ic').innerHTML = c ? chipPhotoHTML(c) : `<i>0${i + 1}</i>`;
+      cell.querySelector('.dp-tx b').textContent = c ? c.name : '';
+      cell.querySelector('.dp-tx span').textContent = c ? (c.profile && c.profile.robotHz ? 'ROBO' : 'PITCH ' + signed((c.profile || {}).pitch || 0, 1)) : 'EMPTY';
+    }
   });
-  // the whole scene takes the colour of the centre chip (or whichever is seated)
-  const lead = chipById(S.slots[1]) || chips[0];
+  $$('.hit-cell').forEach((b) => { b.disabled = !S.slots[+b.dataset.cell]; });
+  const lead = chips[chips.length - 1];
   $('#app').style.setProperty('--tint', lead ? lead.color : '#a487ff');
-  $('#dkName').textContent = !chips.length ? 'メモリを挿入' : chips.length === 1 ? chips[0].name : chips.map((c) => c.name).join(' × ');
-  $('#dkName').classList.toggle('mix', chips.length > 1);
-  syncHolos();
   updateVol();
 }
 
@@ -648,11 +652,10 @@ function screenLoop(t) {
   g.clearRect(0, 0, CW, CH);
   if (chips.length) {
     const grad = g.createLinearGradient(0, 0, CW, 0);
-    const lead = chipById(S.slots[1]) || chips[0];
-    S.slots.forEach((id, bay) => { const c = chipById(id); grad.addColorStop(clamp(BAY_X[bay] / 390, 0, 1), mixHex((c || lead).color, '#ffffff', c ? 0.3 : 0.55)); });
+    chips.forEach((c, i) => grad.addColorStop(chips.length === 1 ? 0.5 : 0.22 + 0.56 * (i / (chips.length - 1)), mixHex(c.color, '#ffffff', 0.3)));
     const boot = W.bootT ? (performance.now() - W.bootT) / 1000 : 9;
-    const bx = BAY_X[W.bootBay] * sx;
-    const x0 = 24 * sx, x1 = 366 * sx, base = CH - 2 * sx, maxH = CH * 0.62;
+    const bx = SLOT_X * sx;
+    const x0 = 60 * sx, x1 = 330 * sx, base = CH - 2 * sx, maxH = CH * 0.55;
     g.lineCap = 'round';
     for (let pass = 0; pass < 2; pass++) {
       g.lineWidth = pass ? 2.1 * sx : 4.2 * sx;
