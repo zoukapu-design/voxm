@@ -72,6 +72,34 @@
    "w": 390,
    "h": 540,
    "title": "NEXT — 浮遊ホロデッキ"
+  },
+  "MSRevolver.dc.html": {
+   "x": 0,
+   "y": 2700,
+   "w": 390,
+   "h": 660,
+   "title": "A — REVOLVER 回転シリンダー"
+  },
+  "MSStack.dc.html": {
+   "x": 470,
+   "y": 2700,
+   "w": 390,
+   "h": 660,
+   "title": "B — STACK 積層マガジン"
+  },
+  "MSOrbit.dc.html": {
+   "x": 940,
+   "y": 2700,
+   "w": 390,
+   "h": 660,
+   "title": "C — ORBIT オービット・コア"
+  },
+  "MSFan.dc.html": {
+   "x": 1410,
+   "y": 2700,
+   "w": 390,
+   "h": 660,
+   "title": "D — FAN 扇形展開"
   }
  },
  "order": [
@@ -83,7 +111,11 @@
   "HoloDeckPearl.dc.html",
   "HoloDeckPearlGadget.dc.html",
   "HoloDeckPearlPro.dc.html",
-  "HoloDeckNext.dc.html"
+  "HoloDeckNext.dc.html",
+  "MSRevolver.dc.html",
+  "MSStack.dc.html",
+  "MSOrbit.dc.html",
+  "MSFan.dc.html"
  ],
  "notes": {
   "head": {
@@ -106,6 +138,13 @@
    "text": "近未来版",
    "kind": "title1",
    "maxW": 860
+  },
+  "row4": {
+   "x": 0,
+   "y": 2440,
+   "text": "複数差し — 4案（ループ再生：3枚差す → 1枚抜く）",
+   "kind": "title1",
+   "maxW": 1800
   }
  },
  "designSystems": []
