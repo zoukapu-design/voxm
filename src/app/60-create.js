@@ -11,7 +11,7 @@ RENDER.create = (opts = {}) => {
     const c = chipById(opts.edit);
     if (c) {
       C = newDraft();
-      Object.assign(C, { editId: c.id, type: c.kind === 'fx' ? 'character' : c.kind, name: c.name, color: c.color, photo: c.photo ? (ASSET[c.photo] || c.photo) : '', art: c.art || null,
+      Object.assign(C, { editId: c.id, type: c.kind === 'fx' || c.kind === 'music' ? 'character' : c.kind, name: c.name, color: c.color, photo: c.photo ? (ASSET[c.photo] || c.photo) : '', art: c.art || null,
         consent: !!c.consent, analysis: c.analysis || null, profile: JSON.parse(JSON.stringify(c.profile || {})), caseIds: casesOf(c.id).map((k) => k.id), step: 2, keepPhotoKey: c.photo && ASSET[c.photo] ? c.photo : null });
     }
   }

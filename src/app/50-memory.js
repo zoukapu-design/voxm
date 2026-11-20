@@ -13,7 +13,7 @@ RENDER.memory = () => {
 function renderChipGrid() {
   const body = $('#memBody');
   const q = S.memQuery.trim().toLowerCase();
-  const kinds = [['all', 'すべて'], ['fav', 'お気に入り'], ['friend', '友達'], ['self', '自分'], ['character', 'キャラ'], ['fx', 'エフェクト']];
+  const kinds = [['all', 'すべて'], ['fav', 'お気に入り'], ['friend', '友達'], ['self', '自分'], ['character', 'キャラ'], ['music', '楽器'], ['fx', 'エフェクト']];
   const list = S.chips.filter((c) => (S.memKind === 'all' || (S.memKind === 'fav' ? c.favorite : c.kind === S.memKind)) && (!q || c.name.toLowerCase().includes(q)));
   body.innerHTML = `
     <div class="search">${ICON.search}<input class="input" id="memQ" placeholder="名前で検索" value="${esc(S.memQuery)}" enterkeyhint="search"></div>
@@ -174,7 +174,8 @@ function editCase(k, initialIds) {
 
 /* ---- "similar voices" grouping: explainable rule-based clusters on the voice profile ---- */
 const VOICE_GROUPS = [
-  { key: 'machine', name: 'メカ・電子ボイス', color: '#7fdcff', test: (p) => p.robotHz > 0 || p.ring >= 0.3 || p.crush > 0.3 || p.tune > 0.5 },
+  { key: 'machine', name: 'メカ・電子ボイス', color: '#7fdcff', test: (p) => p.robotHz > 0 || p.ring >= 0.3 || p.crush > 0.3 || p.tune > 0.5 || p.voc > 0.3 || p.glitch > 0.3 },
+  { key: 'music', name: '楽器・リズム', color: '#5cf2ff', test: (p) => p.inst > 0 || p.perc > 0.3 || p.blip > 0.3 || p.harm > 0.3 },
   { key: 'space', name: '響く・幻想ボイス', color: '#8fa2ff', test: (p) => p.reverb + p.echo + p.chorus >= 0.55 },
   { key: 'lofi', name: 'ローファイ・無線', color: '#c3ff6b', test: (p) => p.lowcut >= 300 || p.highcut <= 5000 || p.drive >= 0.4 },
   { key: 'high', name: '高い声', color: '#ff7ab6', test: (p) => p.pitch >= 2 },

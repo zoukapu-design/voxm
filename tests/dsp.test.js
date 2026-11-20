@@ -117,12 +117,40 @@ for (const ratio of [1.5, 0.75]) {
   for (let k = 0; k < 200; k++) { for (let i = 0; i < 128; i++) blk[i] = Math.sin((k * 128 + i) * 0.05) * 0.3; c.process(blk, out); for (const v of out) if (Number.isFinite(v) && Math.abs(v) > 0.01) alive++; }
   check('recovers after a NaN input (non-silent output)', alive > 1000 ? 1 : 0, 1, 0);
 }
+// ---- playful effects ----
+const syll = (() => { // 120 Hz voice chopped into syllables (4 per second)
+  const v = synthVoice(sr, 3, 120, 1.0, 9);
+  for (let i = 0; i < v.length; i++) { const ph = (i / sr) % 0.25; v[i] *= ph < 0.17 ? Math.min(1, ph / 0.01) : 0; }
+  return v;
+})();
+const stats = (o) => { let pk = 0, e = 0, bad = 0; for (const v of o) { if (!Number.isFinite(v)) bad++; pk = Math.max(pk, Math.abs(v)); e += v * v; } return { pk, rms: Math.sqrt(e / o.length), bad }; };
+for (const [name, params, src] of [
+  ['underwater', { water: 1 }, user], ['piano', { inst: 1, instMix: 1 }, syll], ['guitar', { inst: 2, instMix: 1 }, syll],
+  ['music box', { inst: 3, instMix: 1 }, syll], ['organ', { inst: 4, instMix: 1 }, user], ['synth', { inst: 5, instMix: 1 }, user],
+  ['theremin', { inst: 6, instMix: 1 }, user], ['bass', { inst: 7, instMix: 1 }, syll], ['beatbox', { perc: 1 }, syll],
+  ['game sounds', { blip: 1 }, syll], ['harmony', { harm: 1 }, user], ['vocoder', { voc: 1 }, user],
+  ['tin can', { comb: 1, combMs: 4 }, user], ['auto-wah', { wah: 1 }, syll], ['glitch', { glitch: 1 }, syll],
+]) {
+  const { out } = runCore(src, sr, Object.assign({ pitch: 1, formant: 1 }, params));
+  const st = stats(out.subarray(sr * 0.3));
+  check(`${name}: finite, audible, bounded`, st.bad === 0 && st.rms > 0.01 && st.pk <= 1.0 ? 1 : 0, 1, 0);
+}
+// instruments follow the voice pitch (120 Hz ≈ A#2 → 116.5 Hz)
+for (const [name, inst, expect] of [['organ', 4, 116.5], ['synth', 5, 116.5], ['theremin', 6, 240], ['piano', 1, 116.5], ['guitar', 2, 116.5]]) {
+  const r = A.analyze(runCore(inst === 1 || inst === 2 ? syll : user, sr, { pitch: 1, formant: 1, inst, instMix: 1 }).out, sr);
+  check(`${name} plays at the voice's note`, r.f0, expect, expect * 0.06);
+}
+// instruments / drums / vocoder add no delay
+{
+  const c = new VoxCore(sr); c.set({ pitch: 1, formant: 1, inst: 1, perc: 1, voc: 1, water: 1, wah: 1 });
+  check('playful effects add no delay', c.latencySamples(), 0, 0);
+}
 // CPU budget: seconds of audio processed per second
 {
   const t = Date.now();
-  runCore(synthVoice(sr, 10, 140, 1), sr, { pitch: 1.3, formant: 1.1 });
+  runCore(synthVoice(sr, 10, 140, 1), sr, { pitch: 1.3, formant: 1.1, harm: 1, voc: 1, inst: 1, perc: 1, water: 1, wah: 1, comb: 1 });
   const ms = Date.now() - t;
-  console.log(`INFO  10 s of 48 kHz audio processed in ${ms} ms (${(10000 / ms).toFixed(0)}x realtime, incl. synthesis)`);
+  console.log(`INFO  10 s of 48 kHz audio processed in ${ms} ms (${(10000 / ms).toFixed(0)}x realtime, everything on, incl. synthesis)`);
 }
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks passed');
 process.exit(fails ? 1 : 0);

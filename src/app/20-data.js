@@ -4,7 +4,10 @@ const COLORS = ['#a487ff', '#7fdcff', '#ff7ab6', '#ffb86b', '#5fe0a8', '#ff6b81'
 
 // Voice profile parameters (all optional): pitch/formant in semitones, robotHz, ring 0-1, ringHz,
 // lowcut/highcut Hz, bass/presence dB, drive/chorus/echo/reverb 0-1,
-// vib (semitones) + vibHz, tune 0-1 (snap to semitones), trem 0-1 + tremHz, crush 0-1 (8-bit)
+// vib (semitones) + vibHz, tune 0-1 (snap to semitones), trem 0-1 + tremHz, crush 0-1 (8-bit),
+// water 0-1, inst 1-7 (piano/guitar/music box/organ/synth/theremin/bass) + instMix + instOct, perc (beatbox) 0-1,
+// blip (game sounds) 0-1, harm 0-1 + harmType (0 major / 1 octaves / 2 fifth / 3 minor), voc (vocoder) 0-1,
+// comb 0-1 + combMs (tube / can), wah 0-1, glitch 0-1
 const BUILTIN_CHIPS = [
   { id: 'c_friendA', name: '友達Aの声', kind: 'friend', tag: 'FRIEND', photo: 'friendA', color: '#ffb86b', demo: true, profile: { pitch: 3, formant: 1.6, presence: 1.5 } },
   { id: 'c_friendB', name: '友達Bの声', kind: 'friend', tag: 'FRIEND', photo: 'friendB', color: '#7fdcff', demo: true, profile: { pitch: -2.5, formant: -1, bass: 1.5 } },
@@ -26,16 +29,36 @@ const BUILTIN_CHIPS = [
   { id: 'c_phone', name: '電話', kind: 'fx', tag: 'CALL', art: 'phone', color: '#ffe066', profile: { lowcut: 340, highcut: 3400, drive: 0.18, presence: 4 } },
   { id: 'c_mega', name: 'メガホン', kind: 'fx', tag: 'LOUD', art: 'megaphone', color: '#ff9f43', profile: { lowcut: 600, highcut: 4200, drive: 0.55, presence: 6, echo: 0.15 } },
   { id: 'c_cave', name: '洞くつ', kind: 'fx', tag: 'ECHO', art: 'cave', color: '#5ca8ff', profile: { echo: 0.65, reverb: 0.55, lowcut: 120 } },
+  { id: 'c_water', name: '水の中', kind: 'fx', tag: 'UNDERWATER', art: 'bubble', color: '#4fc3ff', profile: { water: 0.9, vib: 0.35, vibHz: 1.2, chorus: 0.3 } },
+  { id: 'c_piano', name: 'ピアノ', kind: 'music', tag: 'PIANO', art: 'piano', color: '#e9e6ff', profile: { inst: 1, instMix: 0.75, reverb: 0.25 } },
+  { id: 'c_guitar', name: 'ギター', kind: 'music', tag: 'GUITAR', art: 'guitar', color: '#ffb35c', profile: { inst: 2, instMix: 0.75, reverb: 0.15 } },
+  { id: 'c_musicbox', name: 'オルゴール', kind: 'music', tag: 'MUSIC BOX', art: 'musicbox', color: '#ffc4ec', profile: { inst: 3, instMix: 0.7, reverb: 0.35 } },
+  { id: 'c_organ', name: 'オルガン', kind: 'music', tag: 'ORGAN', art: 'organ', color: '#c9a0ff', profile: { inst: 4, instMix: 0.8, reverb: 0.45 } },
+  { id: 'c_synth', name: 'シンセ', kind: 'music', tag: 'SYNTH LEAD', art: 'synth', color: '#5cf2ff', profile: { inst: 5, instMix: 0.8, echo: 0.25, chorus: 0.2 } },
+  { id: 'c_theremin', name: 'テルミン', kind: 'music', tag: 'THEREMIN', art: 'theremin', color: '#a6ff9e', profile: { inst: 6, instMix: 0.85, reverb: 0.4 } },
+  { id: 'c_bass', name: 'ベース', kind: 'music', tag: 'BASS', art: 'bass', color: '#ff7a7a', profile: { inst: 7, instMix: 0.8 } },
+  { id: 'c_vocoder', name: 'ボコーダー', kind: 'music', tag: 'VOCODER', art: 'vocoder', color: '#7d9cff', profile: { voc: 1, chorus: 0.2 } },
+  { id: 'c_beatbox', name: 'ビートボックス', kind: 'music', tag: 'BEATBOX', art: 'drum', color: '#ffcf5c', profile: { perc: 0.9 } },
+  { id: 'c_choir', name: '合唱団', kind: 'character', tag: 'CHOIR', art: 'choir', color: '#ffe9b0', profile: { harm: 0.9, harmType: 0, reverb: 0.5, chorus: 0.3 } },
+  { id: 'c_maou', name: '魔王', kind: 'character', tag: 'DEMON LORD', art: 'crown', color: '#c84bff', profile: { pitch: -4, formant: -2, harm: 0.8, harmType: 1, reverb: 0.5, drive: 0.2 } },
+  { id: 'c_gamese', name: 'ゲームSE', kind: 'fx', tag: 'GAME SE', art: 'coin', color: '#ffe14d', profile: { blip: 0.8, crush: 0.2 } },
+  { id: 'c_can', name: '缶の中', kind: 'fx', tag: 'TIN CAN', art: 'can', color: '#c0c8d8', profile: { comb: 0.85, combMs: 3.2, lowcut: 250 } },
+  { id: 'c_helmet', name: '宇宙ヘルメット', kind: 'fx', tag: 'SPACE SUIT', art: 'helmet', color: '#9ad7ff', profile: { comb: 0.6, combMs: 9, highcut: 5000, lowcut: 200, drive: 0.1 } },
+  { id: 'c_wah', name: 'ワウワウ', kind: 'fx', tag: 'WAH', art: 'wah', color: '#ff8ad8', profile: { wah: 0.9 } },
+  { id: 'c_glitch', name: 'グリッチ', kind: 'fx', tag: 'GLITCH', art: 'glitch', color: '#ff4fd1', profile: { glitch: 0.8, crush: 0.15, ring: 0.1, ringHz: 80 } },
 ];
 // built-ins that shipped before the newest additions (used to slot new chips into existing saved cases once)
 const BUILTIN_V1 = ['c_friendA', 'c_friendB', 'c_android', 'c_nebula', 'c_phantom', 'c_monster', 'c_angel', 'c_helium', 'c_radio'];
+const BUILTIN_CASES_V1 = ['k_friends', 'k_chara', 'k_fx'];
 const BUILTIN_CASES = [
   { id: 'k_friends', name: 'フレンズ', color: '#ffb86b', chipIds: ['c_friendA', 'c_friendB'] },
   { id: 'k_chara', name: 'キャラクター', color: '#a487ff', chipIds: ['c_android', 'c_nebula', 'c_phantom', 'c_monster', 'c_angel', 'c_hamster', 'c_giant', 'c_dragon', 'c_ufo', 'c_elder', 'c_kid'] },
   { id: 'k_fx', name: 'エフェクト', color: '#ff7ab6', chipIds: ['c_helium', 'c_radio', 'c_8bit', 'c_kero', 'c_phone', 'c_mega', 'c_cave'] },
+  { id: 'k_music', name: '楽器ボイス', color: '#5cf2ff', chipIds: ['c_piano', 'c_guitar', 'c_musicbox', 'c_organ', 'c_synth', 'c_theremin', 'c_bass', 'c_vocoder', 'c_beatbox'] },
+  { id: 'k_weird', name: 'へんな声', color: '#ff4fd1', chipIds: ['c_water', 'c_gamese', 'c_can', 'c_helmet', 'c_wah', 'c_glitch', 'c_choir', 'c_maou'] },
 ];
-const KIND_LABEL = { friend: '友達', self: '自分', character: 'キャラ', fx: 'エフェクト' };
-const KIND_TAG = { friend: 'FRIEND', self: 'MY VOICE', character: 'CHARACTER', fx: 'EFFECT' };
+const KIND_LABEL = { friend: '友達', self: '自分', character: 'キャラ', music: '楽器', fx: 'エフェクト' };
+const KIND_TAG = { friend: 'FRIEND', self: 'MY VOICE', character: 'CHARACTER', music: 'INSTRUMENT', fx: 'EFFECT' };
 
 const FX_LIB = [
   { id: 'echo', name: 'ECHO', sub: 'やまびこ', icon: 'echo', color: '#7fdcff', p: { echo: 0.6 } },
@@ -51,6 +74,16 @@ const FX_LIB = [
   { id: 'tune', name: 'KERO', sub: '音程カチッと補正', icon: 'sparkle', color: '#9dff5c', p: { tune: 1 } },
   { id: '8bit', name: '8BIT', sub: 'ゲーム機の音', icon: 'bolt', color: '#ff5ce1', p: { crush: 0.7 } },
   { id: 'trem', name: 'TREMOLO', sub: 'ふるえる音量', icon: 'broadcast', color: '#ffe066', p: { trem: 0.65, tremHz: 8 } },
+  { id: 'water', name: 'WATER', sub: '水の中', icon: 'wave', color: '#4fc3ff', p: { water: 0.8 } },
+  { id: 'choir', name: 'CHOIR', sub: '声が和音に', icon: 'users', color: '#ffe9b0', p: { harm: 0.8, harmType: 0 } },
+  { id: 'octave', name: 'OCTAVE', sub: '上下オクターブ', icon: 'up', color: '#c84bff', p: { harm: 0.75, harmType: 1 } },
+  { id: 'vocoder', name: 'VOCODER', sub: 'シンセで歌う', icon: 'sliders', color: '#7d9cff', p: { voc: 0.9 } },
+  { id: 'piano', name: 'PIANO', sub: '声にピアノを重ねる', icon: 'sparkle', color: '#e9e6ff', p: { inst: 1, instMix: 0.55 } },
+  { id: 'beat', name: 'BEATBOX', sub: '声でドラム', icon: 'rec', color: '#ffcf5c', p: { perc: 0.8 } },
+  { id: 'game', name: 'GAME SE', sub: 'しゃべるとピコッ', icon: 'star', color: '#ffe14d', p: { blip: 0.7 } },
+  { id: 'can', name: 'TIN CAN', sub: '缶・筒の響き', icon: 'box', color: '#c0c8d8', p: { comb: 0.8, combMs: 3.5 } },
+  { id: 'wah', name: 'WAH', sub: 'ワウワウ', icon: 'magic', color: '#ff8ad8', p: { wah: 0.85 } },
+  { id: 'glitch', name: 'GLITCH', sub: 'ぶつ切れ連打', icon: 'bolt', color: '#ff4fd1', p: { glitch: 0.7 } },
 ];
 
 const SAMPLE_SCRIPT = 'こんにちは。今日はいい天気ですね。あいうえお、かきくけこ。私の声をボイスメモリに記録します。好きな食べ物はカレーライスで、休みの日は散歩をしています。ありがとう、またね。';
@@ -88,13 +121,19 @@ async function loadAll() {
   S.cases = cases && cases.length ? cases.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : BUILTIN_CASES.map((c, i) => Object.assign({ order: i, createdAt: 0 }, c));
   // new built-in chips join their default case once (saved cases from older versions don't list them yet)
   const seen = new Set((kv && kv.seenBuiltins) || (cases && cases.length ? BUILTIN_V1 : BUILTIN_CHIPS.map((c) => c.id)));
+  const seenCases = new Set((kv && kv.seenCases) || (cases && cases.length ? BUILTIN_CASES_V1 : BUILTIN_CASES.map((c) => c.id)));
+  for (const bc of BUILTIN_CASES) if (!seenCases.has(bc.id) && !S.cases.find((c) => c.id === bc.id)) {
+    const k = Object.assign({ order: S.cases.length, createdAt: Date.now() }, bc, { chipIds: [...bc.chipIds] });
+    S.cases.push(k); saveCase(k);
+  }
+  S.seenCases = BUILTIN_CASES.map((c) => c.id);
   for (const bc of BUILTIN_CASES) {
     const k = S.cases.find((c) => c.id === bc.id); if (!k) continue;
     const add = bc.chipIds.filter((id) => !seen.has(id) && !k.chipIds.includes(id));
     if (add.length) { k.chipIds.push(...add); saveCase(k); }
   }
   S.seenBuiltins = BUILTIN_CHIPS.map((c) => c.id);
-  if (!kv || !kv.seenBuiltins) saveSettings();
+  if (!kv || !kv.seenBuiltins || !kv.seenCases) saveSettings();
   if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) if (k in kv) S[k] = kv[k];
   if (kv && !kv.slots && kv.insertedId) S.slots = [null, kv.insertedId, null]; // single-slot era
   if (!chipById(S.selectedId)) S.selectedId = S.chips[0]?.id || null;
@@ -110,6 +149,7 @@ function saveSettings() {
     for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) kv[k] = S[k];
     kv.removedBuiltins = S.removedBuiltins || [];
     kv.seenBuiltins = S.seenBuiltins || BUILTIN_CHIPS.map((c) => c.id);
+    kv.seenCases = S.seenCases || BUILTIN_CASES.map((c) => c.id);
     VoxStore.put('kv', 'settings', kv);
   }, 200);
 }
@@ -138,6 +178,7 @@ function layerParams(p, src, a, skipAdditive) {
     else if (k === 'robotHz') { if (a > 0.25 && v) p.robotHz = p.robotHz || v; }
     else if (k === 'ring') { if (v * a > p.ring) { p.ring = v * a; if (src.ringHz) p.ringHz = src.ringHz; } }
     else if (k === 'ringHz') { if (!src.ring) p.ringHz = v; }
+    else if (k === 'inst' || k === 'harmType' || k === 'instOct' || k === 'combMs' || k === 'instMix') { if (a > 0.25) p[k] = v; }
     else if (k === 'lowcut') p.lowcut = Math.max(p.lowcut, 70 + (v - 70) * a);
     else if (k === 'highcut') p.highcut = Math.min(p.highcut, 16000 + (v - 16000) * a);
     else if (k in p) p[k] = Math.max(p[k] || 0, v * a);
@@ -162,6 +203,9 @@ function applyParams() { VoxEngine.setParams(combinedParams()); }
 function profileLine(p) {
   p = p || {};
   const parts = [];
+  const INST_NAME = ['', 'PIANO', 'GUITAR', 'M.BOX', 'ORGAN', 'SYNTH', 'THEREMIN', 'BASS'];
+  const tag = p.inst ? INST_NAME[p.inst] : p.voc ? 'VOCODER' : p.perc ? 'DRUMS' : p.blip ? 'GAME SE' : p.harm ? (p.harmType === 1 ? 'OCTAVES' : 'CHORD') : p.water ? 'WATER' : p.glitch ? 'GLITCH' : p.wah ? 'WAH' : p.comb ? 'TUBE' : p.tune ? 'HARD TUNE' : p.crush ? '8-BIT' : '';
+  if (tag) parts.push(`<span>MODE <b>${tag}</b></span>`);
   if (p.robotHz) parts.push(`<span>ROBO <b>${Math.round(p.robotHz)}Hz</b></span>`);
   else if (p.pitch) parts.push(`<span>PITCH <b>${signed(p.pitch, 1)}</b></span>`);
   if (p.formant) parts.push(`<span>TONE <b>${signed(p.formant, 1)}</b></span>`);
@@ -183,7 +227,7 @@ function chipPhotoHTML(c) {
   return `<div class="mono">${esc((c.name || '?').trim().charAt(0).toUpperCase())}</div>`;
 }
 const CIRCUIT = '<svg class="chip-circuit" viewBox="0 0 100 139" preserveAspectRatio="none" aria-hidden="true"><path d="M4 88V100H14V127"/><path d="M24 116H46V127"/><path d="M95 64V114H72V127"/><path d="M56 121V127"/><path d="M4 30V60"/><path d="M84 6H98"/><circle cx="14" cy="100" r="1"/><circle cx="46" cy="116" r="1"/><circle cx="72" cy="114" r="1"/></svg>';
-const RARITY = { friend: 3, self: 3, character: 2, fx: 1 };
+const RARITY = { friend: 3, self: 3, character: 2, music: 2, fx: 1 };
 function chipHTML(c, opts = {}) {
   if (!c) return '';
   const idx = S.chips.indexOf(c) + 1;
