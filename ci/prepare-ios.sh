@@ -12,11 +12,13 @@ set_str NSPhotoLibraryAddUsageDescription "撮影した動画を写真に保存�
 set_str CFBundleDisplayName "VOXM"
 set_bool ITSAppUsesNonExemptEncryption false
 set_str UIStatusBarStyle "UIStatusBarStyleLightContent"
-for key in UISupportedInterfaceOrientations "UISupportedInterfaceOrientations~ipad"; do
-  $PB -c "Delete :$key" "$PL" >/dev/null 2>&1 || true
-  $PB -c "Add :$key array" "$PL"
-  $PB -c "Add :$key:0 string UIInterfaceOrientationPortrait" "$PL"
-done
+# iPhone only, portrait only. (An iPad build would have to support all four orientations — App Store error 90474.)
+$PB -c "Delete :UISupportedInterfaceOrientations~ipad" "$PL" >/dev/null 2>&1 || true
+$PB -c "Delete :UISupportedInterfaceOrientations" "$PL" >/dev/null 2>&1 || true
+$PB -c "Add :UISupportedInterfaceOrientations array" "$PL"
+$PB -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$PL"
+set_bool UIRequiresFullScreen true
+sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2";/TARGETED_DEVICE_FAMILY = 1;/g' ios/App/App.xcodeproj/project.pbxproj
 ICONSET=ios/App/App/Assets.xcassets/AppIcon.appiconset
 for f in "$ICONSET"/*.png; do cp assets/icon-1024.png "$f"; done
 SPLASH=ios/App/App/Assets.xcassets/Splash.imageset
