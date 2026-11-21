@@ -5,14 +5,14 @@ const VK = Object.keys(VOWELS);
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 
 // one speaker talking for `sec` seconds: returns {x, speech:[[t0,t1],...]} (speech = time ranges with sound)
-function talk(sec, { f0 = 120, fs = 1, seed = 1, sr = 48000, tilt = 0.6, breath = 0.03 } = {}) {
+function talk(sec, { f0 = 120, fs = 1, seed = 1, sr = 48000, tilt = 0.6, breath = 0.03, expr = 0.25 } = {}) {
   const R = rng(seed), n = Math.floor(sec * sr), x = new Float32Array(n), speech = [];
   const res = [0, 1, 2].map(() => [0, 0]);
   let t = 0.15 * sr, ph = 0, lp = 0;
   while (t < n - sr * 0.3) {
     // a phrase of 4-12 syllables, then a pause
     const syl = 4 + Math.floor(R() * 9), start = t;
-    const base = f0 * Math.pow(2, (R() - 0.5) * 0.25);
+    const base = f0 * Math.pow(2, (R() - 0.5) * expr); // expr: phrase-to-phrase pitch range in octaves
     for (let s = 0; s < syl && t < n - sr * 0.3; s++) {
       // consonant: 30-90 ms of shaped noise (some syllables have none)
       if (R() < 0.7) {

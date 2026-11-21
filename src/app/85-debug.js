@@ -64,7 +64,7 @@ function drawHud(d) {
 /* ---- log export ---- */
 async function logText() {
   const n = VoxNative.isNative() ? await VoxNative.call('diag', { after: 0 }) : null;
-  const safeS = {}; for (const k of ['slots', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'fineTune', 'nativeAudio', 'debugHud']) safeS[k] = S[k];
+  const safeS = {}; for (const k of ['slots', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'fineTune', 'nativeSession', 'debugHud']) safeS[k] = S[k];
   const head = [
     'VOXM debug log', new Date().toString(), navigator.userAgent,
     `native=${VoxNative.isNative()} screen=${screen.width}x${screen.height}@${devicePixelRatio} viewport=${innerWidth}x${innerHeight}`,
@@ -121,12 +121,12 @@ function testTone() {
 function debugSectionHTML() {
   return `<div class="h2">デバッグ</div>
     <div class="list-item"><div class="grow"><b style="font-size:14px">デバッグ表示</b><div class="small muted" style="margin-top:3px;line-height:1.5">画面上に入力/出力レベル・iPhoneの音声経路を表示。録画・ログ書き出し・テスト音ボタンも出ます。</div></div><button class="switch ${S.debugHud ? 'on' : ''}" id="swHud" aria-label="デバッグ表示"></button></div>
-    ${VoxNative.isNative() ? `<div class="list-item"><div class="grow"><b style="font-size:14px">iPhoneの音声設定をアプリで調整</b><div class="small muted" style="margin-top:3px;line-height:1.5">通常はON。声が出ないときにOFFにして比べてください（次の「変換 ON」から反映）。</div></div><button class="switch ${S.nativeAudio !== false ? 'on' : ''}" id="swNat" aria-label="iPhoneの音声設定"></button></div>` : ''}
+    ${VoxNative.isNative() ? `<div class="list-item"><div class="grow"><b style="font-size:14px">iPhoneの音声セッションをアプリで設定（実験）</b><div class="small muted" style="margin-top:3px;line-height:1.5">通常はOFF。OFFのときはiPhone側に任せ、スピーカー出力の切り替えだけ行います（次の「変換 ON」から反映）。</div></div><button class="switch ${S.nativeSession ? 'on' : ''}" id="swNat" aria-label="iPhoneの音声セッション"></button></div>` : ''}
     <div class="footer-actions" style="gap:8px;flex-wrap:wrap"><button class="btn ghost" id="btnLog">ログを書き出す</button><button class="btn ghost" id="btnRec">画面録画</button><button class="btn ghost" id="btnTone">テスト音</button></div>`;
 }
 function bindDebugSection(b) {
   const h = $('#swHud', b); if (h) h.onclick = () => { setHud(!DBG.hud); h.classList.toggle('on', DBG.hud); };
-  const n = $('#swNat', b); if (n) n.onclick = () => { S.nativeAudio = S.nativeAudio === false; n.classList.toggle('on', S.nativeAudio); saveSettings(); VLOG.add('APP', 'nativeAudio', S.nativeAudio); };
+  const n = $('#swNat', b); if (n) n.onclick = () => { S.nativeSession = !S.nativeSession; n.classList.toggle('on', S.nativeSession); saveSettings(); VLOG.add('APP', 'nativeSession', S.nativeSession); };
   $('#btnLog', b).onclick = exportLog;
   $('#btnRec', b).onclick = () => { closeSheet(); toggleScreenRec(); };
   $('#btnTone', b).onclick = testTone;

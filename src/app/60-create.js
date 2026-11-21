@@ -112,6 +112,7 @@ function cropPhoto(file) {
 
 /* ---- step 3: voice capture & analysis ---- */
 let decodeCtx = null;
+function closeDecodeCtx() { try { decodeCtx && decodeCtx.close(); } catch (e) {} decodeCtx = null; }
 function getDecodeCtx() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!decodeCtx) decodeCtx = new AC();
@@ -218,7 +219,7 @@ function recorderBlock(box, o) {
       <div class="meter"><i data-rl></i></div>
       ${on ? '' : o.onFile && VoxNative.isNative() ? `<div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px">
           <button class="btn ghost sm" data-nv>${ICON.upload} 動画から声を抽出</button>
-          <label class="btn ghost sm">${ICON.upload} 音声ファイル<input type="file" accept="audio/*,video/*" data-f hidden></label></div>`
+          <label class="btn ghost sm">${ICON.upload} 音声ファイル<input type="file" accept="audio/*" data-f hidden></label></div>`
         : `<label class="btn ghost sm" style="margin-top:6px">${ICON.upload} ${o.fileLabel || '音声ファイルから'}<input type="file" accept="audio/*,video/*" data-f hidden></label>`}`}
     </div>`;
     const r = box.querySelector('[data-r]');
@@ -305,6 +306,7 @@ function stepTune(body) {
   $$('[data-kc]', body).forEach((b) => b.addEventListener('click', () => { const id = b.dataset.kc; C.caseIds.includes(id) ? (C.caseIds = C.caseIds.filter((x) => x !== id)) : C.caseIds.push(id); b.classList.toggle('on'); }));
   $('#cLive', body).onclick = async () => {
     if (C.previewing && VoxEngine.status.state === 'live') { endPreview(); stepTune(body); return; }
+    if (VoxEngine.status.state !== 'live') VoxEngine.prime(true);
     C.previewing = true;
     VoxEngine.setParams(previewP());
     if (VoxEngine.status.state !== 'live') { VoxEngine.status.monitor = true; VoxEngine.status.volume = S.volume; await VoxEngine.start(await audioOpts()); }

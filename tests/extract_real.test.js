@@ -67,6 +67,18 @@ async function run(name, x, truth, expectN) {
     let x = Sy.reverb(c.x, sr); x = Sy.gain(x, 0.02 / Sy.rms(x)); x = Sy.mix(x, Sy.noise(x.length, 0.002));
     ok = (await run('two men', x, c.truth, 2)) && ok;
   }
+  // 3b) one expressive man (phrases jump ±4 semitones), compressed like a phone video
+  {
+    const tk = Sy.talk(25, { f0: 110, fs: 1, seed: 31, expr: 0.66 });
+    let x = Sy.reverb(tk.x, sr); x = Sy.gain(x, 0.01 / Sy.rms(x)); x = Sy.mix(x, Sy.noise(x.length, 0.002));
+    ok = (await run('solo expressive AAC', aacRoundtrip(x), [tk.speech], 1)) && ok;
+  }
+  // 3c) one woman, very expressive
+  {
+    const tk = Sy.talk(25, { f0: 230, fs: 1.17, seed: 37, expr: 0.8 });
+    let x = Sy.gain(tk.x, 0.03 / Sy.rms(tk.x)); x = Sy.mix(x, Sy.noise(x.length, 0.002));
+    ok = (await run('solo expressive woman', x, [tk.speech], 1)) && ok;
+  }
   // 4) one woman, loud with music-like background hum
   {
     const tk = Sy.talk(30, Object.assign({ seed: 8 }, female));
@@ -74,5 +86,16 @@ async function run(name, x, truth, expectN) {
     let x = Sy.gain(tk.x, 0.05 / Sy.rms(tk.x)); x = Sy.mix(x, hum, Sy.noise(x.length, 0.003));
     ok = (await run('solo + hum', x, [tk.speech], 1)) && ok;
   }
+  // robustness over seeds
+  let bad = 0;
+  for (const seed of [41, 43, 47, 53, 59]) {
+    const tk = Sy.talk(20, { f0: 100 + (seed % 5) * 25, fs: 1 + (seed % 3) * 0.06, seed, expr: 0.6 });
+    let x = Sy.reverb(tk.x, sr); x = Sy.gain(x, 0.008 / Sy.rms(x)); x = Sy.mix(x, Sy.noise(x.length, 0.002));
+    if (!(await run('solo seed ' + seed, x, [tk.speech], 1))) bad++;
+    const c = conversation([{ f0: 105 + (seed % 4) * 8, fs: 1 }, { f0: 140 + (seed % 3) * 10, fs: 1.13, tilt: 0.45 }], 40, seed);
+    let y = Sy.reverb(c.x, sr); y = Sy.gain(y, 0.02 / Sy.rms(y)); y = Sy.mix(y, Sy.noise(y.length, 0.002));
+    await run('two men seed ' + seed + ' (info: similar voices are hard; manual pick covers it)', y, c.truth, 2);
+  }
+  if (bad > 1) ok = false;
   console.log(ok ? 'real extract checks passed' : 'SOME FAILED'); process.exit(ok ? 0 : 1);
 })();

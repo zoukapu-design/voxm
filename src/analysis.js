@@ -241,7 +241,8 @@ const VoxAnalysis = (() => {
   /* ---- speaker extraction from a long recording / video soundtrack ----
      Finds voiced stretches, describes each by pitch + spectral envelope, and groups them into voices
      (agglomerative clustering). Returns candidate voices sorted by how long they speak. */
-  const MEL = []; for (let i = 0; i < 18; i++) MEL.push(300 * Math.pow(4200 / 300, i / 17));
+  // log-spaced points (≈1 semitone apart): a vocal-tract length difference is a shift along this axis
+  const MEL = []; for (let i = 0; i < 52; i++) MEL.push(260 * Math.pow(2, i / 12));
   async function segmentSpeakers(samples, sampleRate, onProgress) {
     const pr = prepare(samples, sampleRate), sr = pr.sr, x = normalized(pr.x, pr.sr);
     const hop = Math.round(sr * 0.02), half = Math.round(sr * 0.02);
@@ -268,7 +269,7 @@ const VoxAnalysis = (() => {
     for (let i = 0; i < fr.length;) {
       if (!speech[i]) { i++; continue; }
       let j = i, last = i, gap = 0;
-      while (j < fr.length && gap <= 15) { if (speech[j]) { last = j; gap = 0; } else gap++; j++; }
+      while (j < fr.length && gap <= 11) { if (speech[j]) { last = j; gap = 0; } else gap++; j++; }
       let nv = 0; for (let k = i; k <= last; k++) if (fr[k].f0 > 0 && speech[k]) nv++;
       if (last - i >= 20 && nv >= 8) runs.push([i, last]);
       i = last + 1;
@@ -299,9 +300,20 @@ const VoxAnalysis = (() => {
     }
     onProgress && onProgress(0.9);
     if (!chunks.length) return { duration: samples.length / sampleRate, candidates: [] };
+    // voice distance = formant shift between the two (vocal tract length) + leftover tone difference
+    //                 + pitch gap beyond what one person's intonation covers (±3.5 semitones)
+    const at = (f, x2) => { const i = Math.floor(x2), fr2 = x2 - i; if (i < 0) return f[0]; if (i >= f.length - 1) return f[f.length - 1]; return f[i] + (f[i + 1] - f[i]) * fr2; };
     const dist = (p, q) => {
-      let d = 0; for (let m = 0; m < MEL.length; m++) d += (p.feat[m] - q.feat[m]) ** 2;
-      return Math.abs(p.st - q.st) / 3.2 + Math.sqrt(d / MEL.length) / 0.38;
+      let best = 1e9, bs = 0;
+      for (let sh = -4; sh <= 4.001; sh += 0.25) {
+        let d = 0, n = 0, mp = 0, mq = 0;
+        for (let m = 6; m < MEL.length - 6; m++) { mp += p.feat[m]; mq += at(q.feat, m + sh); n++; }
+        mp /= n; mq /= n;
+        for (let m = 6; m < MEL.length - 6; m++) { const v = (p.feat[m] - mp) - (at(q.feat, m + sh) - mq); d += v * v; }
+        d = Math.sqrt(d / n);
+        if (d < best) { best = d; bs = sh; }
+      }
+      return Math.abs(bs) / 1.3 + best / 0.45 + Math.max(0, Math.abs(p.st - q.st) - 3.5) / 2.5;
     };
     let cl = chunks.map((c) => ({ w: c.w, st: c.st, feat: Float32Array.from(c.feat), items: [c] }));
     const merge = (A2, B2) => {
@@ -311,16 +323,20 @@ const VoxAnalysis = (() => {
     };
     const closest = () => { let bi = -1, bj = -1, bd = 1e9; for (let p = 0; p < cl.length; p++) for (let q = p + 1; q < cl.length; q++) { const d = dist(cl[p], cl[q]); if (d < bd) { bd = d; bi = p; bj = q; } } return [bi, bj, bd]; };
     const doMerge = (bi, bj) => { const m = merge(cl[bi], cl[bj]); cl = cl.filter((_, k) => k !== bi && k !== bj); cl.push(m); };
+    const total = cl.reduce((s2, c) => s2 + c.w, 0);
+    for (let pass = 0; pass < 6; pass++) {
+    const before = cl.length;
     for (;;) { if (cl.length < 2) break; const [bi, bj, bd] = closest(); if (bd > 1.7) break; doMerge(bi, bj); }
     // stray little groups (a laugh, a shout, background music) join the nearest voice instead of being lost
-    const total = cl.reduce((s2, c) => s2 + c.w, 0);
     for (;;) {
       if (cl.length < 2) break;
       cl.sort((a2, b2) => a2.w - b2.w);
       const small = cl[0];
-      if (small.w >= Math.max(2.5, total * 0.12) && cl.length <= 4) break;
+      if (small.w >= Math.max(4, total * 0.15) && cl.length <= 4) break;
       let bj = 1, bd = 1e9; for (let q = 1; q < cl.length; q++) { const d = dist(small, cl[q]); if (d < bd) { bd = d; bj = q; } }
       doMerge(0, bj);
+    }
+    if (cl.length === before) break;
     }
     const candidates = cl.sort((a2, b2) => b2.w - a2.w).map((c) => {
       const segs = c.items.map((it) => [it.t0, it.t1]).sort((a2, b2) => a2[0] - b2[0]);

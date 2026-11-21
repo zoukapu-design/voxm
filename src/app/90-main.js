@@ -17,6 +17,10 @@ async function boot() {
   document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
   window.VOXM_DEBUG = { logText, VLOG, decodeViaElement, SPK, S, W, VoxEngine, go, insertCurrent, ejectChip, combinedParams, applyParams, CALL, startCall };
   dbgStart(); if (S.debugHud) setHud(true);
+  if (VoxNative.isNative()) {
+    VLOG.add('IOS', 'bridge', VoxNative.describe());
+    const t0 = Date.now(); VoxNative.call('route', {}, 5000).then((r) => VLOG.add('IOS', 'ping route', (Date.now() - t0) + 'ms via ' + VoxNative.via, r));
+  }
   spkStart(); setTimeout(() => ensureVoices(), 2500);
   callInit(); // VOXM calls (no-op until Firebase is configured)
 }

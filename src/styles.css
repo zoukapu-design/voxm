@@ -691,3 +691,6 @@ input, select, textarea { font-size: max(16px, 1em); }
 .ex-tl { position: relative; height: 8px; margin-top: 7px; border-radius: 4px; background: rgba(255,255,255,.06); overflow: hidden; }
 .ex-tl i { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg, var(--violet), #6fd3ff); border-radius: 2px; }
 .ex-play { flex: none; }
+.ex-pieces { max-height: 46vh; overflow-y: auto; margin: 4px -4px 0; padding: 0 4px; }
+.ex-piece { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.ex-piece .check { flex: none; width: auto; padding: 0; border: 0; background: none; }

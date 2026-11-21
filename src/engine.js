@@ -182,9 +182,11 @@ registerProcessor('voxm-core', VoxmProcessor);`;
   }
 
   // create / resume the AudioContext synchronously inside the tap (iOS only allows it during a user gesture)
-  function prime() {
+  function prime(fresh) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
+    // a new conversion gets a brand-new context: an old one can be left "running" but silent by iOS
+    if (fresh && st.ctx && st.state === 'off' && st.ctx.state !== 'closed') { try { st.ctx.close(); } catch (e) {} st.ctx = null; st.recDest = null; }
     if (!st.ctx || st.ctx.state === 'closed') {
       st.ctx = new AC({ latencyHint: 'interactive' });
       st.ctx.addEventListener('statechange', () => { if (st.state === 'live' && st.ctx.state !== 'running') resumeCtx(); });
@@ -227,15 +229,26 @@ registerProcessor('voxm-core', VoxmProcessor);`;
     if (ok && st.needsResume) { st.needsResume = false; emit(); }
     return ok;
   }
+  let stallHeals = [];
   async function heal(reason) {
     if (healing || st.state !== 'live') return;
     const now = performance.now();
     if (now - lastHeal < 2500) return;
     healing = true; lastHeal = now; st.restarts++;
-    console.warn('VOXM audio self-heal:', reason);
+    // the context stopped rendering more than once: rebuild it from scratch instead of reusing it
+    if (reason === 'core-stalled' || reason === 'output-silent') stallHeals = stallHeals.filter((t) => now - t < 12000).concat(now);
+    const hard = stallHeals.length >= 2;
+    console.warn('VOXM audio self-heal:', reason, hard ? '(new AudioContext)' : '');
     try {
       teardown(false, true);
-      await resumeCtx();
+      if (hard) {
+        stallHeals = [];
+        const old = st.ctx; st.ctx = null; st.recDest = null;
+        try { old && old.close(); } catch (e) {}
+        prime();
+        await Promise.race([st.ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1200))]);
+        if (st.ctx.state !== 'running') { st.needsResume = true; emit(); }
+      } else await resumeCtx();
       await buildGraph();
       deadIn = deadOut = 0;
     } catch (e) {
