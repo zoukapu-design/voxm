@@ -4,7 +4,7 @@ const STEP = 104;
 // The deck faces the viewer; one small slit sits exactly under the wheel's centre card, so a chip drops straight in.
 // Inserted chips are drawn fully inside (absorbed) and show up as icons on the deck's tilted display panel (up to 3).
 // Tapping an icon sends that chip back up out of the slit, where it can be pulled out.
-const DK = { W: 350, H: 236, R: 60, plateZ: 34, slitY: 46, slitW: 98, panelY: 196, panelH: 110 };
+const DK = { W: 320, H: 196, R: 56, plateZ: 34, slitY: 40, slitW: 96, panelY: 170, panelH: 100 };
 const CARD = { left: 130, w: 130, h: 180 };
 const SEAT = { k: 0.6, show: 86 }; // chip size in the slit, and how much stays above it when it comes back up
 const SLOT_X = 195;
@@ -71,6 +71,7 @@ function buildDeck() {
   top.style.transformStyle = 'preserve-3d';
   const ph = DK.panelH;
   const panel = dEl('face dk-panel', `inset:auto;left:40px;top:${DK.panelY - ph}px;width:${w - 80}px;height:${ph}px`, top);
+  dEl('face dk-mark', `inset:auto;left:0;top:${DK.panelY - ph}px;width:${w}px;height:${ph}px`, top, '<b>VOXM</b><span>INSERT MEMORY</span>');
   panel.innerHTML = `<div class="dp-cells">${[0, 1, 2, 3].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div></div>`).join('')}</div>`;
 }
 

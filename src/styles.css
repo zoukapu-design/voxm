@@ -150,12 +150,12 @@ main { flex: 1; position: relative; min-height: 0; }
 .chip .dim { position: absolute; inset: 0; background: #05060a; opacity: 0; pointer-events: none; z-index: 4; clip-path: var(--notch); }
 
 /* ---------- HOLO DECK (front-facing, straight insertion) ---------- */
-.deck-floor { position: absolute; left: 25px; top: 440px; width: 340px; height: 110px; border-radius: 50%; pointer-events: none;
+.deck-floor { position: absolute; left: 40px; top: 446px; width: 310px; height: 96px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--tint) calc(45% + var(--lv, 0) * 50%), transparent), color-mix(in srgb, var(--tint) 10%, transparent) 60%, transparent); filter: blur(14px); }
-.deck-scene { position: absolute; left: 20px; top: 340px; width: 350px; height: 236px; perspective: 1000px; perspective-origin: 50% -60%; z-index: 15; pointer-events: none; }
-.deck-obj { position: absolute; left: 0; top: 0; width: 350px; height: 236px; transform-style: preserve-3d; transform: rotateX(54deg); }
+.deck-scene { position: absolute; left: 35px; top: 362px; width: 320px; height: 196px; perspective: 1000px; perspective-origin: 50% -60%; z-index: 15; pointer-events: none; }
+.deck-obj { position: absolute; left: 0; top: 0; width: 320px; height: 196px; transform-style: preserve-3d; transform: rotateX(57deg); }
 .deck-obj.thunk { animation: deckThunk .34s cubic-bezier(.3,.7,.4,1); }
-@keyframes deckThunk { 30% { transform: rotateX(54deg) translateZ(-4px); } 65% { transform: rotateX(54deg) translateZ(1px); } }
+@keyframes deckThunk { 30% { transform: rotateX(57deg) translateZ(-4px); } 65% { transform: rotateX(57deg) translateZ(1px); } }
 .deck-obj .L, .deck-obj .face { position: absolute; }
 .deck-obj .face { inset: 0; }
 .floor-grid { pointer-events: none; opacity: .85;
@@ -475,15 +475,15 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .dk-pbase { background: linear-gradient(180deg, rgba(120,100,190,.35), rgba(255,255,255,.6)); box-shadow: inset 0 1px 2px rgba(80,60,150,.4); }
 /* icons shown right on the deck's top surface */
 .dk-panel { display: flex; align-items: center; justify-content: center; }
-.dp-cells { position: relative; display: flex; gap: 16px; align-items: center; }
-.dp-cell { --c: #a487ff; position: relative; width: 56px; height: 56px; display: grid; place-items: center; }
+.dp-cells { position: relative; display: flex; gap: 12px; align-items: center; }
+.dp-cell { --c: #a487ff; position: relative; width: 52px; height: 52px; display: grid; place-items: center; }
 .dp-cell::before { content: ''; position: absolute; inset: -14px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 45%, transparent), transparent); opacity: 0; transition: opacity .4s; }
 .dp-cell.on::before { opacity: .7; }
 .deck.live .dp-cell.on::before { opacity: calc(.6 + var(--lv, 0) * .4); }
-.dp-ic { position: relative; width: 52px; height: 52px; display: grid; place-items: center; opacity: 0; transform: scale(.4); transition: opacity .35s, transform .45s cubic-bezier(.2,.9,.3,1.3); }
+.dp-ic { position: relative; width: 48px; height: 48px; display: grid; place-items: center; opacity: 0; transform: scale(.4); transition: opacity .35s, transform .45s cubic-bezier(.2,.9,.3,1.3); }
 .dp-cell.on .dp-ic { opacity: 1; transform: none; }
-.dp-ic img { width: 48px; height: 48px; object-fit: cover; border-radius: 14px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 70%, #fff), 0 0 12px var(--c); }
-.dp-ic .art { width: 54px; height: 54px; filter: drop-shadow(0 0 .7px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 .7px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 6px color-mix(in srgb, var(--c) 70%, transparent)) saturate(1.4); }
+.dp-ic img { width: 44px; height: 44px; object-fit: cover; border-radius: 14px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 70%, #fff), 0 0 12px var(--c); }
+.dp-ic .art { width: 50px; height: 50px; filter: drop-shadow(0 0 .7px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 .7px color-mix(in srgb, var(--c) 55%, #1a0f3a)) drop-shadow(0 0 6px color-mix(in srgb, var(--c) 70%, transparent)) saturate(1.4); }
 .dp-ic .art svg > rect, .dp-ic .art svg > g[opacity] { display: none; }
 .dp-ic .art svg { width: 100%; height: 100%; display: block; }
 .dp-ic .mono { font-family: var(--tech); font-size: 30px; color: var(--c); text-shadow: 0 0 8px var(--c); }
@@ -670,3 +670,10 @@ input, select, textarea { font-size: max(16px, 1em); }
 /* the 3D deck is decoration only (taps go to the .hit overlays), so it must never swallow taps meant for the dock */
 .deck-scene, .deck-scene *, .deck-floor { pointer-events: none !important; }
 .ctrl { z-index: 40; }
+
+/* engraved mark on the empty deck */
+.dk-mark { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; pointer-events: none; transition: opacity .5s; }
+.dk-mark b { font-family: var(--tech); font-weight: 400; font-size: 30px; letter-spacing: .32em; padding-left: .32em; color: #e6e1f3;
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 rgba(120,100,180,.35); }
+.dk-mark span { font-family: var(--tech); font-size: 7px; letter-spacing: .4em; padding-left: .4em; color: #a49bc9; }
+.deck.loaded .dk-mark { opacity: 0; }
