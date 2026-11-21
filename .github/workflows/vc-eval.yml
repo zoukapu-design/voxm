@@ -20,22 +20,23 @@ jobs:
         run: |
           mkdir -p eval
           say -v '?' | grep -Ei 'ja_JP|en_US' | head -40 || true
-          JA=$(say -v '?' | awk '/ja_JP/{print $1}' | head -4 | tr '\n' ' ')
-          echo "Japanese voices: $JA"
-          set -- $JA
+          # keep only voices that really render audio on this machine (some are not downloaded)
+          OK=""
+          for v in $(say -v '?' | awk '/ja_JP/{print $1}'); do
+            say -v "$v" -o /tmp/t.aiff "こんにちは、テストです。" 2>/dev/null || continue
+            sz=$(stat -f%z /tmp/t.aiff); echo "$v -> $sz bytes"
+            [ "$sz" -gt 30000 ] && OK="$OK $v"
+          done
+          echo "Japanese voices that work:$OK"
+          set -- $OK
           TXT1="こんにちは。今日はいい天気ですね。これは声の変換のテストです。うまく聞こえていますか。"
           TXT2="昨日は友達と駅前のカフェに行って、新しいアプリの話をたくさんしました。また一緒に遊ぼうね。"
-          if [ -n "$1" ] && [ -n "$2" ]; then
-            say -v "$1" -o eval/src_a.aiff "$TXT1"; say -v "$2" -o eval/ref_b.aiff "$TXT2"
-            say -v "$2" -o eval/src_b.aiff "$TXT1"; say -v "$1" -o eval/ref_a.aiff "$TXT2"
-            echo "VOICES=$1 $2" >> $GITHUB_ENV
-          else
-            say -v Samantha -o eval/src_a.aiff "Hello, this is a voice conversion test. Can you hear me well?"
-            say -v Daniel -o eval/ref_b.aiff "Yesterday I went to a cafe with my friend and talked about our new app."
-            say -v Daniel -o eval/src_b.aiff "Hello, this is a voice conversion test. Can you hear me well?"
-            say -v Samantha -o eval/ref_a.aiff "Yesterday I went to a cafe with my friend and talked about our new app."
-            echo "VOICES=Samantha Daniel (no Japanese voice installed)" >> $GITHUB_ENV
-          fi
+          A="$1"; B="${2:-$1}"
+          for v in $OK; do case "$v" in Kyoko) A=Kyoko;; esac; done
+          for v in $OK; do [ "$v" != "$A" ] && B="$v" && case "$v" in Reed|Rocko|Eddy|Grandpa) break;; esac; done
+          say -v "$A" -o eval/src_a.aiff "$TXT1"; say -v "$B" -o eval/ref_b.aiff "$TXT2"
+          say -v "$B" -o eval/src_b.aiff "$TXT1"; say -v "$A" -o eval/ref_a.aiff "$TXT2"
+          echo "VOICES=A:$A B:$B" >> $GITHUB_ENV
           for f in eval/*.aiff; do afconvert -f WAVE -d LEI16@16000 -c 1 "$f" "${f%.aiff}.wav"; done
           ls -la eval
 
@@ -54,7 +55,14 @@ jobs:
             case "$pkg" in fairseq*|wandb*) echo "skip $pkg"; continue;; esac
             pip install "$pkg" >/dev/null 2>&1 && echo "ok   $pkg" || echo "FAIL $pkg"
           done < req.txt
+          pip install "jiwer<4"
           python initialization.py --task all
+          if [ ! -s preprocess/ckpts/wavlm_large.pt ]; then
+            curl -L --fail -o preprocess/ckpts/wavlm_large.pt https://huggingface.co/s3prl/converted_ckpts/resolve/main/wavlm_large.pt \
+              || curl -L --fail -o preprocess/ckpts/wavlm_large.pt https://github.com/microsoft/unilm/releases/download/wavlm/WavLM-Large.pt \
+              || echo "::warning::WavLM-Large not downloaded"
+          fi
+          ls -la preprocess/ckpts
           find ckpts -maxdepth 3 -type f -exec ls -la {} \; | head -40
 
       - name: Convert (A → B, B → A) and time it
