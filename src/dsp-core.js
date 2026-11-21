@@ -362,9 +362,10 @@ class VoxCore {
     p.trem = num(p.trem, 0, 1, 0); p.tremHz = num(p.tremHz, 0.5, 30, 6); p.crush = num(p.crush, 0, 1, 0);
     p.water = num(p.water, 0, 1, 0); p.inst = Math.round(num(p.inst, 0, 7, 0)); p.instMix = num(p.instMix, 0, 1, 0.85); p.instOct = Math.round(num(p.instOct, -2, 2, 0));
     p.perc = num(p.perc, 0, 1, 0); p.blip = num(p.blip, 0, 1, 0); p.harm = num(p.harm, 0, 1, 0); p.harmType = Math.round(num(p.harmType, 0, 3, 0));
+    p.pk = num(p.pk, 0.5, 1.8, 1); p.pc = num(p.pc, 50, 600, 150); // intonation range: deviations around pc scaled by pk
     p.voc = num(p.voc, 0, 1, 0); p.comb = num(p.comb, 0, 1, 0); p.combMs = num(p.combMs, 0.5, 20, 5); p.wah = num(p.wah, 0, 1, 0); p.glitch = num(p.glitch, 0, 1, 0); p.boost = num(p.boost, 0, 1, 0);
     p.fun = p.water > 0 || p.inst > 0 || p.perc > 0 || p.blip > 0 || p.voc > 0 || p.comb > 0 || p.wah > 0 || p.glitch > 0;
-    p.active = Math.abs(p.pitch - 1) > 0.004 || Math.abs(p.formant - 1) > 0.004 || p.robotHz > 0 || p.vib > 0.01 || p.tune > 0.01 || p.harm > 0.01;
+    p.active = Math.abs(p.pitch - 1) > 0.004 || Math.abs(p.formant - 1) > 0.004 || Math.abs(p.pk - 1) > 0.02 || p.robotHz > 0 || p.vib > 0.01 || p.tune > 0.01 || p.harm > 0.01;
   }
   latencySamples() { return this.p.active ? this.D : 0; }
   detect() {
@@ -386,6 +387,8 @@ class VoxCore {
     const voiced = this.voiced;
     const P = voiced ? this.period : sr * 0.0065;
     let ratio = p.pitch;
+    // match the target's intonation range: a speaker who moves their pitch more (or less) than you
+    if (voiced && Math.abs(p.pk - 1) > 0.02 && p.robotHz <= 0) ratio *= Math.pow((sr / P) / p.pc, p.pk - 1);
     if (p.vib > 0) ratio *= Math.pow(2, (p.vib * Math.sin(this.vibPhase)) / 12);
     let hopOut;
     if (p.robotHz > 0) hopOut = sr / p.robotHz;

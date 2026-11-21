@@ -161,5 +161,12 @@ for (const [name, inst, expect] of [['organ', 4, 116.5], ['synth', 5, 116.5], ['
   const ms = Date.now() - t;
   console.log(`INFO  10 s of 48 kHz audio processed in ${ms} ms (${(10000 / ms).toFixed(0)}x realtime, everything on, incl. synthesis)`);
 }
+// intonation range: pk scales pitch deviations around pc (voice at 100 Hz and 200 Hz, centre 141 Hz, pk 1.5)
+{
+  const lo = runCore(synthVoice(sr, 1.5, 100, 1.0), sr, { pitch: 1, formant: 1, pk: 1.5, pc: 141.4 });
+  const hi = runCore(synthVoice(sr, 1.5, 200, 1.0), sr, { pitch: 1, formant: 1, pk: 1.5, pc: 141.4 });
+  check('intonation range low note (expect ~84 Hz)', A.analyze(lo.out, sr).f0, 84, 6);
+  check('intonation range high note (expect ~238 Hz)', A.analyze(hi.out, sr).f0, 238, 12);
+}
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks passed');
 process.exit(fails ? 1 : 0);

@@ -69,6 +69,12 @@ const VoxAnalysis = (() => {
     return { x: out, sr: sr / ds };
   }
 
+  // pitch spread in semitones (robust: interquartile range / 1.35)
+  function f0Spread(f0s) {
+    if (f0s.length < 10) return 0;
+    const s2 = f0s.map((f) => 12 * Math.log2(f)).sort((a, b) => a - b);
+    return (s2[Math.floor(s2.length * 0.75)] - s2[Math.floor(s2.length * 0.25)]) / 1.35;
+  }
   function median(arr) {
     if (!arr.length) return 0;
     const s = [...arr].sort((a, b) => a - b);
@@ -188,6 +194,20 @@ const VoxAnalysis = (() => {
     const env = new Float32Array(NFFT / 2);
     let envCount = 0;
     const re = new Float32Array(NFFT), im = new Float32Array(NFFT);
+    // background noise spectrum from the quietest stretches, subtracted before the envelope is taken
+    // (a phone video's hiss and room tone would otherwise be read as the friend's voice colour)
+    const noiseP = new Float32Array(NFFT);
+    {
+      const starts = [];
+      for (let st = 0; st + NFFT < x.length; st += NFFT / 2) { let e = 0; for (let k = st; k < st + NFFT; k += 4) e += x[k] * x[k]; starts.push([e, st]); }
+      starts.sort((p, q) => p[0] - q[0]);
+      const take = starts.slice(0, Math.max(1, Math.floor(starts.length * 0.12)));
+      for (const [, st] of take) {
+        for (let k = 0; k < NFFT; k++) { const w = 0.5 - 0.5 * Math.cos((2 * Math.PI * k) / (NFFT - 1)); re[k] = x[st + k] * w; im[k] = 0; }
+        fft(re, im);
+        for (let k = 0; k < NFFT; k++) noiseP[k] += (re[k] * re[k] + im[k] * im[k]) / take.length;
+      }
+    }
     const stride = Math.max(1, Math.floor(voicedStarts.length / 160));
     for (let v = 0; v < voicedStarts.length; v += stride) {
       const st = voicedStarts[v];
@@ -197,7 +217,7 @@ const VoxAnalysis = (() => {
       }
       fft(re, im);
       // log magnitude -> real cepstrum -> lifter -> smooth envelope
-      for (let k = 0; k < NFFT; k++) { re[k] = Math.log(re[k] * re[k] + im[k] * im[k] + 1e-10) * 0.5; im[k] = 0; }
+      for (let k = 0; k < NFFT; k++) { const P = re[k] * re[k] + im[k] * im[k]; re[k] = Math.log(Math.max(P - 1.5 * noiseP[k], 0.03 * P) + 1e-10) * 0.5; im[k] = 0; }
       fft(re, im);
       for (let k = 0; k < NFFT; k++) {
         const q = Math.min(k, NFFT - k);
@@ -219,7 +239,7 @@ const VoxAnalysis = (() => {
       rms: Math.sqrt(totalE / Math.max(1, x.length)),
       envSr: sr,
       env: Array.from(env),
-      fmt: formantMedians(fmts), snr: +snr.toFixed(1),
+      fmt: formantMedians(fmts), snr: +snr.toFixed(1), f0sd: +f0Spread(clean).toFixed(2),
       ok: med > 0 && envCount >= 8,
     };
   }
@@ -284,7 +304,7 @@ const VoxAnalysis = (() => {
     const lo = Math.min(0, 0.55 * semis) - 2, hi = Math.max(0, 0.55 * semis) + 2;
     // noisy recordings (a phone video) give shaky measurements: lean on the usual pitch↔formant relation instead
     const snr = Math.min(target.snr == null ? 40 : target.snr, base.snr == null ? 40 : base.snr);
-    const q = Math.max(0, Math.min(1, (snr - 22) / 14));
+    const q = Math.max(0, Math.min(1, (snr - 18) / 14)); // (envelopes are noise-reduced first)
     const prior = 0.33 * semis, wMeas = fs.how === 'formants' ? 0.25 + 0.5 * q : 0.15 + 0.35 * q;
     const formant = Math.max(-5.5, Math.min(7, Math.max(lo, Math.min(hi, prior + (fs.semis - prior) * wMeas))));
     const eq = timbreEq(target, base, Math.pow(2, formant / 12)).map((v) => +Math.max(-6, Math.min(6, v * q)).toFixed(1));
@@ -466,6 +486,6 @@ const VoxAnalysis = (() => {
     return new Blob([buf], { type: 'audio/wav' });
   }
 
-  return { EQ_BANDS, timbreEq, lpcPeaks, formantMedians, analyze, formantWarp, profileFrom, decodeBlob, fft, yinFrame, envFrame, envFromRaw, segmentSpeakers, sliceSegments, wavBlob };
+  return { EQ_BANDS, timbreEq, f0Spread, lpcPeaks, formantMedians, analyze, formantWarp, profileFrom, decodeBlob, fft, yinFrame, envFrame, envFromRaw, segmentSpeakers, sliceSegments, wavBlob };
 })();
 if (typeof module !== 'undefined') module.exports = VoxAnalysis;

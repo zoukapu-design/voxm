@@ -155,7 +155,7 @@ function stepVoice(body) {
   });
   async function useSample(blob, a) {
     C.sampleBlob = blob; C.sampleAnalysisRaw = a;
-    C.voice = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr };
+    C.voice = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr, f0sd: a.f0sd };
     if (friend) computeFriendProfile();
     else {
       C.analysis = { f0: a.f0, confidence: 1, voicedRatio: a.voicedRatio, seconds: a.seconds };

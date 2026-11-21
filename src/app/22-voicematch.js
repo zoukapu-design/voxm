@@ -47,7 +47,7 @@ function spkUpdate() {
 function spkVoice() {
   if (!SPK.ready) return null;
   const fmt = SPK.fmts.length >= 25 ? VoxAnalysis.formantMedians(SPK.fmts) : null;
-  return { f0: medianOf(SPK.f0s), env: SPK.envReady ? SPK.env : null, envSr: SPK.sr, fmt, snr: 40 };
+  return { f0: medianOf(SPK.f0s), f0sd: SPK.f0s.length >= 30 ? VoxAnalysis.f0Spread(SPK.f0s) : 0, env: SPK.envReady ? SPK.env : null, envSr: SPK.sr, fmt, snr: 40 };
 }
 
 // live pitch/formant for one target voice (null = not enough speech yet)
@@ -58,7 +58,10 @@ function liveMatch(voice) {
   let formant, eq = null;
   if (me.env && voice.env) { const pr = VoxAnalysis.profileFrom(voice, me); formant = pr.formant; eq = pr.eq; }
   else formant = pitch * 0.33; // until the envelope settles: formants roughly follow the pitch gap
-  return { pitch, formant, eq };
+  // intonation range: how much the friend moves their pitch compared with the speaker (needs enough of both)
+  let pk = 1;
+  if (voice.f0sd > 0.3 && me.f0sd > 0.3) pk = Math.max(0.6, Math.min(1.6, voice.f0sd / me.f0sd));
+  return { pitch, formant, eq, pk, pc: me.f0 };
 }
 
 // effective profile of a seated chip, used by combinedParams()
@@ -69,7 +72,7 @@ function effVoiceProfile(c) {
   const auto = c.auto || { pitch: 0, formant: 0 };
   const withEq = (q, eq) => { if (eq) for (let i = 0; i < 6; i++) q['tm' + i] = (p['tm' + i] || 0) + eq[i]; return q; };
   if (!m) return c.auto ? withEq(Object.assign({}, p), c.autoEq) : Object.assign({}, p, { pitch: (p.pitch || 0) - auto.pitch, formant: (p.formant || 0) - auto.formant });
-  return withEq(Object.assign({}, p, { pitch: m.pitch + (p.pitch || 0) - auto.pitch, formant: m.formant + (p.formant || 0) - auto.formant }), m.eq);
+  return withEq(Object.assign({}, p, { pitch: m.pitch + (p.pitch || 0) - auto.pitch, formant: m.formant + (p.formant || 0) - auto.formant, pk: m.pk || 1, pc: m.pc || 150 }), m.eq);
 }
 // the create screen's live preview
 function draftVoiceProfile(profile, voice, auto, autoEq) {
@@ -90,10 +93,10 @@ function spkLoop() {
     const m = liveMatch(c.voice); if (!m) continue;
     const old = SPK.cache[c.id];
     const eqMoved = m.eq && (!old || !old.eq || m.eq.some((v, i) => Math.abs(v - old.eq[i]) > 0.7));
-    if (!old || eqMoved || Math.abs(old.pitch - m.pitch) > 0.15 || Math.abs(old.formant - m.formant) > 0.15) {
+    if (!old || eqMoved || Math.abs((old.pk || 1) - m.pk) > 0.05 || Math.abs(old.pitch - m.pitch) > 0.15 || Math.abs(old.formant - m.formant) > 0.15) {
       // glide large corrections over a few seconds so the voice doesn't lurch
       const step = (a, b) => (old ? a + Math.max(-1.5, Math.min(1.5, b - a)) : b);
-      SPK.cache[c.id] = { pitch: step(old ? old.pitch : 0, m.pitch), formant: step(old ? old.formant : 0, m.formant), eq: m.eq };
+      SPK.cache[c.id] = { pitch: step(old ? old.pitch : 0, m.pitch), formant: step(old ? old.formant : 0, m.formant), eq: m.eq, pk: m.pk, pc: m.pc };
       changed = true;
     }
   }
@@ -107,13 +110,13 @@ function spkStart() { clearInterval(SPK.timer); SPK.timer = setInterval(spkLoop,
 // older friend chips: rebuild the target voice from their stored sample once
 async function ensureVoices() {
   for (const c of S.chips) {
-    if ((c.voice && c.voice.fmt) || !(c.kind === 'friend' || c.kind === 'self') || !c.sampleKey) continue; // (re)build voices made before formant tracking
+    if ((c.voice && c.voice.fmt && c.voice.f0sd != null) || !(c.kind === 'friend' || c.kind === 'self') || !c.sampleKey) continue; // (re)build voices made before formant tracking
     try {
       const blob = await VoxStore.get('blobs', c.sampleKey); if (!blob) continue;
       const { samples, sampleRate } = await VoxAnalysis.decodeBlob(blob);
       const a = VoxAnalysis.analyze(samples, sampleRate); if (!a.ok) continue;
       const hadVoice = !!c.voice;
-      c.voice = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr };
+      c.voice = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr, f0sd: a.f0sd };
       if (hadVoice) { saveChip(c); delete SPK.cache[c.id]; VLOG.add('SPK', 'voice updated', c.name, a.fmt.map(Math.round).join('/'), 'snr', a.snr); continue; }
       c.auto = { pitch: (c.profile || {}).pitch || 0, formant: (c.profile || {}).formant || 0 }; // tuned against the creator's voice
       if (S.baseline && S.baseline.env) c.autoEq = VoxAnalysis.profileFrom(a, S.baseline).eq;

@@ -185,6 +185,7 @@ function layerParams(p, src, a, skipAdditive) {
     else if (k === 'robotHz') { if (a > 0.25 && v) p.robotHz = p.robotHz || v; }
     else if (k === 'ring') { if (v * a > p.ring) { p.ring = v * a; if (src.ringHz) p.ringHz = src.ringHz; } }
     else if (k === 'ringHz') { if (!src.ring) p.ringHz = v; }
+    else if (k === 'pk' || k === 'pc') p[k] = v;
     else if (k === 'inst' || k === 'harmType' || k === 'instOct' || k === 'combMs' || k === 'instMix') { if (a > 0.25) p[k] = v; }
     else if (k === 'lowcut') p.lowcut = Math.max(p.lowcut, 70 + (v - 70) * a);
     else if (k === 'highcut') p.highcut = Math.min(p.highcut, 16000 + (v - 16000) * a);

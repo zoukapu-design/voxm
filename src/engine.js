@@ -14,7 +14,7 @@ const VoxEngine = (() => {
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => { try { fn(st); } catch (e) { console.warn(e); } });
 
-  const DEFAULT = { pitch: 0, formant: 0, robotHz: 0, ring: 0, ringHz: 40, vib: 0, vibHz: 5.5, tune: 0, trem: 0, tremHz: 6, crush: 0, water: 0, inst: 0, instMix: 0.85, instOct: 0, perc: 0, blip: 0, harm: 0, harmType: 0, voc: 0, comb: 0, combMs: 5, wah: 0, glitch: 0, boost: 0, lowcut: 70, highcut: 16000, bass: 0, presence: 0, tm0: 0, tm1: 0, tm2: 0, tm3: 0, tm4: 0, tm5: 0, drive: 0, chorus: 0, echo: 0, reverb: 0 };
+  const DEFAULT = { pitch: 0, formant: 0, robotHz: 0, ring: 0, ringHz: 40, vib: 0, vibHz: 5.5, tune: 0, trem: 0, tremHz: 6, crush: 0, water: 0, inst: 0, instMix: 0.85, instOct: 0, perc: 0, blip: 0, harm: 0, harmType: 0, voc: 0, comb: 0, combMs: 5, wah: 0, glitch: 0, boost: 0, lowcut: 70, highcut: 16000, bass: 0, presence: 0, pk: 1, pc: 150, tm0: 0, tm1: 0, tm2: 0, tm3: 0, tm4: 0, tm5: 0, drive: 0, chorus: 0, echo: 0, reverb: 0 };
 
   function supported() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.AudioContext || window.webkitAudioContext));
@@ -105,7 +105,7 @@ const VoxEngine = (() => {
   }
 
   function coreParams(p) {
-    return { pitch: Math.pow(2, p.pitch / 12), formant: Math.pow(2, p.formant / 12), robotHz: p.robotHz, ring: p.ring, ringHz: p.ringHz, vib: p.vib, vibHz: p.vibHz, tune: p.tune, trem: p.trem, tremHz: p.tremHz, crush: p.crush,
+    return { pitch: Math.pow(2, p.pitch / 12), formant: Math.pow(2, p.formant / 12), robotHz: p.robotHz, ring: p.ring, ringHz: p.ringHz, vib: p.vib, vibHz: p.vibHz, tune: p.tune, trem: p.trem, tremHz: p.tremHz, crush: p.crush, pk: p.pk, pc: p.pc,
       water: p.water, inst: p.inst, instMix: p.instMix, instOct: p.instOct, perc: p.perc, blip: p.blip, harm: p.harm, harmType: p.harmType, voc: p.voc, comb: p.comb, combMs: p.combMs, wah: p.wah, glitch: p.glitch, boost: p.boost };
   }
 
