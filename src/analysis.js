@@ -261,7 +261,7 @@ const VoxAnalysis = (() => {
     const db = fr.map((f) => 20 * Math.log10(f.rms + 1e-9));
     const sorted = [...db].sort((a, b) => a - b);
     const floor = sorted[Math.floor(sorted.length * 0.1)], top = sorted[Math.floor(sorted.length * 0.97)];
-    const thr = Math.max(floor + 9, top - 38);
+    const thr = Math.max(Math.min(floor + 9, top - 10), top - 38); // (continuous talking has no quiet floor)
     const speech = db.map((d) => d > thr);
     // speech runs: bridge gaps up to 300 ms, keep runs ≥ 0.4 s that contain enough voiced frames
     const runs = [];
