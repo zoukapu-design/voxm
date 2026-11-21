@@ -15,7 +15,7 @@ async def main():
             await p.click('[data-t=friend]'); await p.fill('#cName', 'ゆうき'); await p.click('#cNext'); await p.wait_for_timeout(300)
             await p.click('#cConsent'); await p.wait_for_timeout(200)
             await p.set_input_files('#baseBox [data-f]', D + '/me.wav'); await p.wait_for_timeout(2500)
-            await p.set_input_files('#sampleBox [data-f]', D + '/friend.wav'); await p.wait_for_timeout(3500)
+            await p.set_input_files('#sampleBox [data-f]', D + '/friend.wav'); await p.wait_for_selector('[data-pick]', timeout=20000); await p.click('[data-pick="0"]'); await p.wait_for_timeout(1200)
             await p.screenshot(path=D + '/shots/friend_analysis.png', full_page=True)
             print('draft profile:', await p.evaluate('JSON.stringify(VOXM_DEBUG.S.baseline && {base: Math.round(VOXM_DEBUG.S.baseline.f0)})'))
             await p.click('#cNext'); await p.wait_for_timeout(400)
