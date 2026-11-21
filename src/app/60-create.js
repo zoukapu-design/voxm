@@ -141,7 +141,7 @@ function stepVoice(body) {
       const a = await analyzeBlob(blob); if (!a) return;
       const key = uid('base'); await VoxStore.put('blobs', key, blob);
       if (S.baseline && S.baseline.blobKey) VoxStore.del('blobs', S.baseline.blobKey);
-      S.baseline = { f0: a.f0, env: a.env, envSr: a.envSr, at: Date.now(), blobKey: key }; saveSettings();
+      S.baseline = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr, at: Date.now(), blobKey: key }; saveSettings();
       if (C.analysis && C.sampleAnalysisRaw) computeFriendProfile();
       toast('基準の声を登録しました'); stepVoice(body);
     },
@@ -155,12 +155,12 @@ function stepVoice(body) {
   });
   async function useSample(blob, a) {
     C.sampleBlob = blob; C.sampleAnalysisRaw = a;
-    C.voice = { f0: a.f0, env: a.env, envSr: a.envSr };
+    C.voice = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr };
     if (friend) computeFriendProfile();
     else {
       C.analysis = { f0: a.f0, confidence: 1, voicedRatio: a.voicedRatio, seconds: a.seconds };
       C.profile = Object.assign({}, C.profile, { pitch: 0, formant: 0 }); C.auto = { pitch: 0, formant: 0 };
-      if (!S.baseline) { const key = uid('base'); await VoxStore.put('blobs', key, blob); S.baseline = { f0: a.f0, env: a.env, envSr: a.envSr, at: Date.now(), blobKey: key }; saveSettings(); }
+      if (!S.baseline) { const key = uid('base'); await VoxStore.put('blobs', key, blob); S.baseline = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr, at: Date.now(), blobKey: key }; saveSettings(); }
     }
     stepVoice(body);
   }

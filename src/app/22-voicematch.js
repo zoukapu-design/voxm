@@ -4,10 +4,10 @@
    the pitch / formant shift from *that* voice, so the chip sounds like the friend no matter who talks.
    chip.profile.pitch/formant stay as they were tuned against the creator's voice (chip.auto); the difference
    (profile − auto) is the user's manual tweak and is kept on top of the live match. */
-const SPK = { f0s: [], env: null, envN: 0, sr: 16000, ready: false, envReady: false, cache: {}, timer: 0, tick: 0, jump: 0, lastShown: 0 };
+const SPK = { f0s: [], fmts: [], env: null, envN: 0, sr: 16000, ready: false, envReady: false, cache: {}, timer: 0, tick: 0, jump: 0, lastShown: 0 };
 
 function spkReset(keepRecent) {
-  SPK.f0s = keepRecent ? SPK.f0s.slice(-15) : [];
+  SPK.f0s = keepRecent ? SPK.f0s.slice(-15) : []; SPK.fmts = [];
   SPK.env = null; SPK.envN = 0; SPK.ready = SPK.f0s.length >= 12; SPK.envReady = false; SPK.cache = {}; SPK.jump = 0;
 }
 const medianOf = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
@@ -27,6 +27,7 @@ function spkSample() {
       for (let k = 0; k < SPK.env.length; k++) SPK.env[k] += (e.env[k] - SPK.env[k]) * a;
     }
     SPK.sr = e.envSr;
+    if (e.peaks && e.peaks.length >= 2) { SPK.fmts.push(e.peaks); if (SPK.fmts.length > 300) SPK.fmts.shift(); }
   }
 }
 
@@ -45,7 +46,8 @@ function spkUpdate() {
 }
 function spkVoice() {
   if (!SPK.ready) return null;
-  return { f0: medianOf(SPK.f0s), env: SPK.envReady ? SPK.env : null, envSr: SPK.sr };
+  const fmt = SPK.fmts.length >= 25 ? VoxAnalysis.formantMedians(SPK.fmts) : null;
+  return { f0: medianOf(SPK.f0s), env: SPK.envReady ? SPK.env : null, envSr: SPK.sr, fmt, snr: 40 };
 }
 
 // live pitch/formant for one target voice (null = not enough speech yet)
@@ -105,12 +107,14 @@ function spkStart() { clearInterval(SPK.timer); SPK.timer = setInterval(spkLoop,
 // older friend chips: rebuild the target voice from their stored sample once
 async function ensureVoices() {
   for (const c of S.chips) {
-    if (c.voice || !(c.kind === 'friend' || c.kind === 'self') || !c.sampleKey) continue;
+    if ((c.voice && c.voice.fmt) || !(c.kind === 'friend' || c.kind === 'self') || !c.sampleKey) continue; // (re)build voices made before formant tracking
     try {
       const blob = await VoxStore.get('blobs', c.sampleKey); if (!blob) continue;
       const { samples, sampleRate } = await VoxAnalysis.decodeBlob(blob);
       const a = VoxAnalysis.analyze(samples, sampleRate); if (!a.ok) continue;
-      c.voice = { f0: a.f0, env: a.env, envSr: a.envSr };
+      const hadVoice = !!c.voice;
+      c.voice = { f0: a.f0, env: a.env, envSr: a.envSr, fmt: a.fmt, snr: a.snr };
+      if (hadVoice) { saveChip(c); delete SPK.cache[c.id]; VLOG.add('SPK', 'voice updated', c.name, a.fmt.map(Math.round).join('/'), 'snr', a.snr); continue; }
       c.auto = { pitch: (c.profile || {}).pitch || 0, formant: (c.profile || {}).formant || 0 }; // tuned against the creator's voice
       if (S.baseline && S.baseline.env) c.autoEq = VoxAnalysis.profileFrom(a, S.baseline).eq;
       saveChip(c);

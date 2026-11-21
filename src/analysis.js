@@ -76,6 +76,68 @@ const VoxAnalysis = (() => {
   }
 
   const NFFT = 1024, LIFTER = 22, FMAX_ENV = 5000;
+  // LPC formant peaks of one 30 ms frame (x at ~16 kHz). Formant positions say much more about a person's
+  // vocal tract than the overall spectrum shape, which mostly reflects the microphone / room / codec.
+  const LPC_P = 14;
+  function lpcPeaks(x, st, sr) {
+    const N = Math.round(sr * 0.03);
+    if (st + N > x.length) return null;
+    const f = new Float64Array(N);
+    let prev = x[st] || 0;
+    for (let k = 0; k < N; k++) { const v = x[st + k]; f[k] = (v - 0.9 * prev) * (0.54 - 0.46 * Math.cos((2 * Math.PI * k) / (N - 1))); prev = v; }
+    const r = new Float64Array(LPC_P + 1);
+    for (let l = 0; l <= LPC_P; l++) { let acc = 0; for (let k = l; k < N; k++) acc += f[k] * f[k - l]; r[l] = acc; }
+    if (r[0] <= 1e-9) return null;
+    r[0] *= 1.0001;
+    const a = new Float64Array(LPC_P + 1), tmp = new Float64Array(LPC_P + 1); a[0] = 1; let e = r[0];
+    for (let i = 1; i <= LPC_P; i++) {
+      let acc = r[i]; for (let j = 1; j < i; j++) acc += a[j] * r[i - j];
+      const kk = -acc / e;
+      for (let j = 1; j < i; j++) tmp[j] = a[j] + kk * a[i - j];
+      for (let j = 1; j < i; j++) a[j] = tmp[j];
+      a[i] = kk; e *= 1 - kk * kk;
+      if (e <= 0) return null;
+    }
+    // formants = LPC roots with a narrow bandwidth (Durand–Kerner on the monic polynomial z^p + a1 z^(p-1) + …)
+    const P = LPC_P, zr = new Float64Array(P), zi = new Float64Array(P);
+    for (let i = 0; i < P; i++) { const ang = (2 * Math.PI * i) / P + 0.4; zr[i] = 0.9 * Math.cos(ang); zi[i] = 0.9 * Math.sin(ang); }
+    for (let it = 0; it < 80; it++) {
+      let moved = 0;
+      for (let i = 0; i < P; i++) {
+        // p(z)
+        let pr = 1, pi = 0;
+        for (let j = 1; j <= P; j++) { const nr = pr * zr[i] - pi * zi[i] + a[j], ni = pr * zi[i] + pi * zr[i]; pr = nr; pi = ni; }
+        // prod (z_i - z_j)
+        let qr = 1, qi = 0;
+        for (let j = 0; j < P; j++) if (j !== i) { const dr = zr[i] - zr[j], di = zi[i] - zi[j]; const nr = qr * dr - qi * di, ni = qr * di + qi * dr; qr = nr; qi = ni; }
+        const den = qr * qr + qi * qi || 1e-30;
+        const cr = (pr * qr + pi * qi) / den, ci = (pi * qr - pr * qi) / den;
+        zr[i] -= cr; zi[i] -= ci; moved += Math.abs(cr) + Math.abs(ci);
+      }
+      if (moved < 1e-9) break;
+    }
+    const out = [];
+    for (let i = 0; i < P; i++) {
+      if (zi[i] <= 0) continue;
+      const mag = Math.hypot(zr[i], zi[i]), fr = (Math.atan2(zi[i], zr[i]) * sr) / (2 * Math.PI), bw = (-Math.log(mag) * sr) / Math.PI;
+      if (fr > 200 && fr < 4500 && bw < 400) out.push(fr);
+    }
+    out.sort((p2, q2) => p2 - q2);
+    return out;
+  }
+  // per-speaker formant medians from many frames: [F1, F2, F3, F4] (0 = not seen)
+  function formantMedians(list) {
+    const out = [];
+    // trimmed mean of log-frequency: vowel mixes make the distributions two-humped, where a median jumps around
+    for (let i = 0; i < 4; i++) {
+      const v = list.map((p) => p[i]).filter((x2) => x2 > 0).map(Math.log).sort((p, q) => p - q);
+      if (v.length < 8) { out.push(0); continue; }
+      const a2 = Math.floor(v.length * 0.15), z = Math.ceil(v.length * 0.85);
+      let acc = 0; for (let k = a2; k < z; k++) acc += v[k];
+      out.push(Math.exp(acc / (z - a2)));
+    }
+    return out;
+  }
   // bring quiet recordings (a phone video from across the room) up to a working level:
   // the loud end of the frame-energy distribution goes to ~0.12 RMS
   function normalized(x, sr) {
@@ -108,6 +170,21 @@ const VoxAnalysis = (() => {
     let med = median(f0s);
     const clean = f0s.filter((f) => f > med * 0.7 && f < med * 1.42);
     med = median(clean);
+    // formants from the stronger voiced frames, and a rough signal-to-noise figure for the recording
+    const fmts = [];
+    {
+      const es = voicedStarts.map((st) => { let e = 0; for (let k = st; k < st + 480 && k < x.length; k++) e += x[k] * x[k]; return e; });
+      const cut = [...es].sort((p, q) => p - q)[Math.floor(es.length * 0.4)] || 0;
+      const stp = Math.max(1, Math.floor(voicedStarts.length / 400));
+      for (let v = 0; v < voicedStarts.length; v += stp) if (es[v] >= cut) { const pk = lpcPeaks(x, voicedStarts[v], sr); if (pk && pk.length >= 3) fmts.push(pk); }
+    }
+    let snr = 0;
+    {
+      const L = Math.round(sr * 0.02), es = [];
+      for (let i = 0; i + L <= x.length; i += L) { let e = 0; for (let k = i; k < i + L; k++) e += x[k] * x[k]; es.push(e / L + 1e-12); }
+      es.sort((p, q) => p - q);
+      snr = 10 * Math.log10(es[Math.floor(es.length * 0.95)] / es[Math.floor(es.length * 0.1)]);
+    }
     const env = new Float32Array(NFFT / 2);
     let envCount = 0;
     const re = new Float32Array(NFFT), im = new Float32Array(NFFT);
@@ -142,6 +219,7 @@ const VoxAnalysis = (() => {
       rms: Math.sqrt(totalE / Math.max(1, x.length)),
       envSr: sr,
       env: Array.from(env),
+      fmt: formantMedians(fmts), snr: +snr.toFixed(1),
       ok: med > 0 && envCount >= 8,
     };
   }
@@ -183,18 +261,35 @@ const VoxAnalysis = (() => {
     for (const d of diff) out.push(+Math.max(-9, Math.min(9, (d - mean) * 8.686 * 0.75)).toFixed(1));
     return out;
   }
+  // Vocal-tract difference from formant positions (F3/F4 mostly: they move little with the vowel),
+  // falling back to the envelope warp when formants are missing.
+  function formantShift(target, base) {
+    const T = target.fmt, B = base.fmt;
+    if (T && B) {
+      // mean log-ratio over F1–F3: each one moves with the vowel, but averaged over many frames of each voice
+      // the vowels largely cancel and the vocal-tract length difference remains
+      const w = [0.25, 0.25, 0.5]; let acc = 0, n = 0;
+      for (let i = 0; i < 3; i++) if (T[i] > 0 && B[i] > 0) { acc += w[i] * 12 * Math.log2(T[i] / B[i]); n += w[i]; }
+      if (n >= 0.5) return { semis: acc / n, how: 'formants' };
+    }
+    const warp = formantWarp(target, base);
+    return { semis: 12 * Math.log2(Math.max(0.74, Math.min(1.42, warp.ratio))), how: 'envelope', confidence: warp.confidence };
+  }
   // Build a playable profile that moves `base` (the user's own voice) toward `target`.
   function profileFrom(target, base) {
-    const pitchRatio = target.f0 / base.f0;
+    const semis = Math.max(-12, Math.min(12, 12 * Math.log2(target.f0 / base.f0)));
+    const fs = formantShift(target, base);
+    // keep the formant move physically plausible next to the pitch move: a much lower voice does not come
+    // with a much "smaller" vocal tract (that sounds like a chipmunk singing low), and vice versa
+    const lo = Math.min(0, 0.55 * semis) - 2, hi = Math.max(0, 0.55 * semis) + 2;
+    // noisy recordings (a phone video) give shaky measurements: lean on the usual pitch↔formant relation instead
+    const snr = Math.min(target.snr == null ? 40 : target.snr, base.snr == null ? 40 : base.snr);
+    const q = Math.max(0, Math.min(1, (snr - 22) / 14));
+    const prior = 0.33 * semis, wMeas = fs.how === 'formants' ? 0.25 + 0.5 * q : 0.15 + 0.35 * q;
+    const formant = Math.max(-5.5, Math.min(7, Math.max(lo, Math.min(hi, prior + (fs.semis - prior) * wMeas))));
+    const eq = timbreEq(target, base, Math.pow(2, formant / 12)).map((v) => +Math.max(-6, Math.min(6, v * q)).toFixed(1));
     const warp = formantWarp(target, base);
-    const semis = 12 * Math.log2(pitchRatio);
-    const ratio = Math.max(0.74, Math.min(1.42, warp.ratio));
-    return {
-      eq: timbreEq(target, base, ratio),
-      pitch: +Math.max(-12, Math.min(12, semis)).toFixed(2),
-      formant: +(12 * Math.log2(Math.max(0.74, Math.min(1.42, warp.ratio)))).toFixed(2),
-      confidence: +warp.confidence.toFixed(3),
-    };
+    return { eq, pitch: +semis.toFixed(2), formant: +formant.toFixed(2), formantRaw: +fs.semis.toFixed(2), formantBy: fs.how, eqQuality: +q.toFixed(2), confidence: +warp.confidence.toFixed(3) };
   }
 
   async function decodeBlob(blob, ctx) {
@@ -235,7 +330,7 @@ const VoxAnalysis = (() => {
     if (x.length < NFFT) return null;
     const st = x.length - NFFT;
     let e = 0; for (let k = st; k < x.length; k++) e += x[k] * x[k];
-    return { env: envFrame(x, st), envSr: s2, rms: Math.sqrt(e / NFFT) };
+    return { env: envFrame(x, st), envSr: s2, rms: Math.sqrt(e / NFFT), peaks: lpcPeaks(x, x.length - Math.round(s2 * 0.03), s2) };
   }
 
   /* ---- speaker extraction from a long recording / video soundtrack ----
@@ -371,6 +466,6 @@ const VoxAnalysis = (() => {
     return new Blob([buf], { type: 'audio/wav' });
   }
 
-  return { EQ_BANDS, timbreEq, analyze, formantWarp, profileFrom, decodeBlob, fft, yinFrame, envFrame, envFromRaw, segmentSpeakers, sliceSegments, wavBlob };
+  return { EQ_BANDS, timbreEq, lpcPeaks, formantMedians, analyze, formantWarp, profileFrom, decodeBlob, fft, yinFrame, envFrame, envFromRaw, segmentSpeakers, sliceSegments, wavBlob };
 })();
 if (typeof module !== 'undefined') module.exports = VoxAnalysis;
