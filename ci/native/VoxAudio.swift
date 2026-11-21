@@ -13,7 +13,8 @@ public class VoxAudioPlugin: CAPPlugin, CAPBridgedPlugin, RPPreviewViewControlle
         CAPPluginMethod(name: "diag", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "recStart", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "recStop", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "pickVideo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "pickVideo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "shareFiles", returnType: CAPPluginReturnPromise)
     ]
     var pickCall: CAPPluginCall?
 
@@ -213,6 +214,28 @@ public class VoxAudioPlugin: CAPPlugin, CAPBridgedPlugin, RPPreviewViewControlle
         } catch {
             nlog("extract error: \(error.localizedDescription)")
             call.resolve(["ok": false, "error": error.localizedDescription])
+        }
+    }
+
+    // ---- iOS share sheet for files made in the web app (base64) ----
+    @objc func shareFiles(_ call: CAPPluginCall) {
+        guard let items = call.getArray("files") as? [[String: Any]] else { call.resolve(["ok": false, "error": "no files"]); return }
+        var urls: [URL] = []
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("voxm-share-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        for it in items {
+            guard let name = it["name"] as? String, let b64 = it["base64"] as? String, let data = Data(base64Encoded: b64) else { continue }
+            let u = dir.appendingPathComponent(name)
+            if (try? data.write(to: u)) != nil { urls.append(u) }
+        }
+        if urls.isEmpty { call.resolve(["ok": false, "error": "write failed"]); return }
+        DispatchQueue.main.async {
+            let vc = UIActivityViewController(activityItems: urls, applicationActivities: nil)
+            vc.completionWithItemsHandler = { _, done, _, err in
+                VoxAudioPlugin.nlog("shareFiles done=\(done) err=\(err?.localizedDescription ?? "-")")
+                call.resolve(["ok": true, "completed": done])
+            }
+            self.bridge?.viewController?.present(vc, animated: true)
         }
     }
 

@@ -52,7 +52,7 @@ function openChipSheet(id) {
     <div class="footer-actions" style="margin-top:10px">
       <button class="btn ghost sm" id="csFav">${c.favorite ? ICON.star : ICON.starLine} ${c.favorite ? 'お気に入り' : 'お気に入り登録'}</button>
       <button class="btn ghost sm" id="csCase">${ICON.box} ケース</button>
-      ${c.sampleKey ? `<button class="btn ghost sm" id="csPlay">${ICON.play} 元の声</button>` : ''}
+      ${c.sampleKey ? `<button class="btn ghost sm" id="csPlay">${ICON.play} 元の声</button><button class="btn ghost sm" id="csExport">${ICON.upload} 書き出す</button>` : ''}
     </div>
     <div class="footer-actions" style="margin-top:10px">
       <button class="btn ghost sm" id="csEdit">${ICON.edit} 調整</button>
@@ -68,6 +68,7 @@ function openChipSheet(id) {
     $('#csFav', b).onclick = () => { c.favorite = !c.favorite; saveChip(c); close(); RENDER.memory(); openChipSheet(id); };
     $('#csCase', b).onclick = () => { close(); openCaseAssign(c); };
     if ($('#csPlay', b)) $('#csPlay', b).onclick = async () => { const blob = await VoxStore.get('blobs', c.sampleKey); if (blob) playBlob(blob); };
+    if ($('#csExport', b)) $('#csExport', b).onclick = () => exportChipSample(c);
     $('#csEdit', b).onclick = () => { close(); go('create', { edit: c.id }); };
     $('#csDup', b).onclick = () => {
       const copy = Object.assign({}, JSON.parse(JSON.stringify(c)), { id: uid('c'), name: c.name + ' 2', builtin: false, demo: false, createdAt: Date.now(), favorite: false });

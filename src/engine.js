@@ -441,6 +441,30 @@ registerProcessor('voxm-core', VoxmProcessor);`;
     } catch (e) {}
   }
 
+  // record the raw mic and the converted output side by side (for comparing / sending to support)
+  let ab = null;
+  function startCapture(maxSec = 20) {
+    if (st.state !== 'live' || !st.src || !st.outGain) return false;
+    stopCapture();
+    const ctx = st.ctx;
+    const merger = ctx.createChannelMerger(2), sp = ctx.createScriptProcessor(4096, 2, 2), mute = ctx.createGain();
+    mute.gain.value = 0;
+    st.src.connect(merger, 0, 0); st.outGain.connect(merger, 0, 1);
+    merger.connect(sp); sp.connect(mute); mute.connect(ctx.destination);
+    ab = { raw: [], out: [], n: 0, max: maxSec * ctx.sampleRate, sr: ctx.sampleRate, nodes: [merger, sp, mute], src: st.src, outGain: st.outGain };
+    sp.onaudioprocess = (e) => { if (!ab || ab.n >= ab.max) return; ab.raw.push(new Float32Array(e.inputBuffer.getChannelData(0))); ab.out.push(new Float32Array(e.inputBuffer.getChannelData(1))); ab.n += e.inputBuffer.length; };
+    return true;
+  }
+  function captureSeconds() { return ab ? ab.n / ab.sr : 0; }
+  function stopCapture() {
+    if (!ab) return null;
+    const a = ab; ab = null;
+    try { a.src.disconnect(a.nodes[0]); } catch (e) {}
+    try { a.outGain.disconnect(a.nodes[0]); } catch (e) {}
+    a.nodes.forEach((n) => { try { n.disconnect(); } catch (e) {} });
+    const join = (arr) => { const n = arr.reduce((s2, x) => s2 + x.length, 0), o = new Float32Array(n); let k = 0; for (const x of arr) { o.set(x, k); k += x.length; } return o; };
+    return { raw: join(a.raw), out: join(a.out), sr: a.sr };
+  }
   // latest raw mic block + the core's pitch, for following who is speaking
   let envBuf = null;
   function inputFrame() {
@@ -462,7 +486,7 @@ registerProcessor('voxm-core', VoxmProcessor);`;
       sinceMsg: st.lastMsg ? Math.round(performance.now() - st.lastMsg) : null, audioSession: (navigator.audioSession && navigator.audioSession.type) || null };
   }
   return {
-    status: st, debug, inputFrame, DEFAULT, supported, prime, start, stop, reconfigure, setParams, setMonitor, setVolume, latencyMs,
+    status: st, debug, inputFrame, startCapture, stopCapture, captureSeconds, DEFAULT, supported, prime, start, stop, reconfigure, setParams, setMonitor, setVolume, latencyMs,
     canPickOutput, listOutputs, setOutput, startRecording, stopRecording, recording,
     renderOffline, encodeWav, sfx, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
   };

@@ -277,6 +277,7 @@ function stepTune(body) {
     <div class="row" style="gap:14px;align-items:flex-start;margin-bottom:6px"><div id="cPrev" style="font-size:9px;flex:none">${chipHTML(draftChip())}</div>
       <div class="grow"><div class="small muted" style="line-height:1.6;margin-bottom:10px">${C.type === 'friend' && C.analysis ? '録音から自動で設定済み。好みで微調整できます。' : '声のキャラを作り込みましょう。'}</div>
       <button class="btn sm block" id="cLive" style="margin-bottom:8px">${ICON.mic} ${VoxEngine.status.state === 'live' && C.previewing ? 'マイクで試聴中' : 'マイクで試す'}</button>
+      ${VoxEngine.status.state === 'live' && C.previewing ? `<button class="btn ghost sm block" id="cCmp" style="margin-bottom:8px">${ICON.upload} 登録した声と変換後を書き出す</button>` : ''}
       ${S.baseline && S.baseline.blobKey ? `<button class="btn ghost sm block" id="cBase">${ICON.play} 自分の録音で試聴</button>` : ''}</div></div>
     <div class="panel" style="margin-top:10px">
       ${sliderHTML('pitch', 'ピッチ（声の高さ）', -12, 12, 0.1, p.pitch, (v) => st(v) + ' 半音')}
@@ -324,6 +325,7 @@ function stepTune(body) {
       playBuffer(out);
     } catch (e) { console.warn(e); toast('試聴を作れませんでした'); }
   };
+  if ($('#cCmp', body)) $('#cCmp', body).onclick = () => openCompare();
   $('#cBack', body).onclick = () => { endPreview(); prevStep(); };
   $('#cSave', body).onclick = saveDraft;
 }

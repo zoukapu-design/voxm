@@ -541,7 +541,9 @@ function openTune() {
       <div class="list-item" style="border:0;padding:2px 0 8px"><div class="grow"><b style="font-size:13px">話す人に自動で合わせる</b><div class="small muted">友達メモリを、誰が話しても友達の声に近づけます<br><span id="tuSpk">${esc(spkStatusText())}</span></div></div><button class="switch ${S.autoMatch !== false ? 'on' : ''}" id="tuAuto" aria-label="話す人に自動で合わせる"></button></div>
       <div class="list-item" style="border:0;padding:2px 0 0"><div class="grow"><b style="font-size:13px">モニター（自分で聴く）</b><div class="small muted">オフにすると録音・出力先にだけ流れます</div></div><button class="switch ${S.monitor ? 'on' : ''}" id="tuMon" aria-label="モニター"></button></div>
     </div>
-    <div class="footer-actions"><button class="btn ghost" id="tuReset">ピッチを0に戻す</button><button class="btn ghost" id="tuRelearn">話す人が替わった</button></div>`, (b) => {
+    <div class="footer-actions"><button class="btn ghost" id="tuReset">ピッチを0に戻す</button><button class="btn ghost" id="tuRelearn">話す人が替わった</button></div>
+    <button class="btn ghost block" id="tuCompare" style="margin-top:10px">${ICON.upload} 比較用に録音して書き出す</button>`, (b) => {
+    $('#tuCompare', b).onclick = () => openCompare();
     $('#tuAuto', b).onclick = (e) => { S.autoMatch = S.autoMatch === false; e.currentTarget.classList.toggle('on', S.autoMatch); saveSettings(); applyParams(); $('#tuSpk', b).textContent = spkStatusText(); };
     $('#tuRelearn', b).onclick = () => { spkReset(false); applyParams(); toast('新しい話者の声を聞き取ります。少し話してください'); $('#tuSpk', b).textContent = spkStatusText(); };
     const spkT = setInterval(() => { const e = $('#tuSpk', b); if (!e) return clearInterval(spkT); e.textContent = spkStatusText(); }, 1000);
