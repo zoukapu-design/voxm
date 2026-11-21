@@ -254,6 +254,14 @@ registerProcessor('voxm-core', VoxmProcessor);`;
   document.addEventListener('pointerdown', tapResume, true);
   document.addEventListener('touchend', tapResume, true);
 
+  // change mic options (e.g. echo cancellation when earphones are plugged in) without stopping
+  async function reconfigure(opts) {
+    st.opts = Object.assign({}, st.opts, opts);
+    if (st.state !== 'live') return;
+    lastHeal = 0;
+    await heal('reconfigure');
+  }
+
   function teardown(closeCtx, keepRec) {
     if (!keepRec) clearInterval(watchTimer);
     try { st.stream && st.stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
@@ -407,7 +415,7 @@ registerProcessor('voxm-core', VoxmProcessor);`;
   }
 
   return {
-    status: st, DEFAULT, supported, start, stop, setParams, setMonitor, setVolume, latencyMs,
+    status: st, DEFAULT, supported, start, stop, reconfigure, setParams, setMonitor, setVolume, latencyMs,
     canPickOutput, listOutputs, setOutput, startRecording, stopRecording, recording,
     renderOffline, encodeWav, sfx, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
   };

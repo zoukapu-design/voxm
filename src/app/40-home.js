@@ -533,16 +533,17 @@ async function toggleConvert() {
   const st = VoxEngine.status;
   if (st.state === 'live') {
     if (VoxEngine.recording()) await toggleRec();
-    VoxEngine.stop(); VoxEngine.sfx('off'); updateDriver(); return;
+    VoxEngine.stop(); watchRoute(false); VoxEngine.sfx('off'); updateDriver(); return;
   }
   if (st.state === 'starting') return;
   if (!seatedChips().length && W.list.length) await insertCurrent();
   VoxEngine.setParams(combinedParams());
   VoxEngine.status.monitor = S.monitor; VoxEngine.status.volume = S.volume;
-  await VoxEngine.start({ safeMode: S.safeMode, noiseSuppression: S.noiseSup });
+  await VoxEngine.start(await audioOpts());
   if (st.state === 'live') {
     VoxEngine.sfx('on');
-    if (!headphoneTipShown && S.monitor) { headphoneTipShown = true; toast('話してみてください。スピーカーで響く場合はイヤホンを使ってください', 3200); }
+    watchRoute(true);
+    if (!headphoneTipShown && S.monitor) { headphoneTipShown = true; toast(VoxEngine.status.opts.safeMode ? '話してみてください。スピーカーだと声が少しずつ小さくなることがあります（イヤホン推奨）' : '話してみてください', 3400); }
   } else if (st.state === 'error') showMicHelp();
   updateDriver();
 }

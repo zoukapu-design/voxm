@@ -148,7 +148,7 @@ async function openCamera() {
   if (VoxEngine.status.state !== 'live') {
     if (!seatedChips().length && W.list.length) { S.slots[1] = W.list[Math.max(0, centerIndex())].id; syncSlotChips(); applyParams(); }
     VoxEngine.setParams(combinedParams()); VoxEngine.status.monitor = false; VoxEngine.status.volume = S.volume;
-    await VoxEngine.start({ safeMode: S.safeMode, noiseSuppression: S.noiseSup });
+    await VoxEngine.start(await audioOpts());
     if (VoxEngine.status.state !== 'live') { showMicHelp(); return; }
   }
   let vstream;

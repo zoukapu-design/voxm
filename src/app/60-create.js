@@ -289,7 +289,7 @@ function stepTune(body) {
     if (C.previewing && VoxEngine.status.state === 'live') { endPreview(); stepTune(body); return; }
     C.previewing = true;
     VoxEngine.setParams(Object.assign({}, VoxEngine.DEFAULT, C.profile));
-    if (VoxEngine.status.state !== 'live') { VoxEngine.status.monitor = true; VoxEngine.status.volume = S.volume; await VoxEngine.start({ safeMode: S.safeMode, noiseSuppression: S.noiseSup }); }
+    if (VoxEngine.status.state !== 'live') { VoxEngine.status.monitor = true; VoxEngine.status.volume = S.volume; await VoxEngine.start(await audioOpts()); }
     else VoxEngine.setMonitor(true);
     if (VoxEngine.status.state !== 'live') { C.previewing = false; showMicHelp(); return; }
     toast('話してみてください（イヤホン推奨）'); stepTune(body);
