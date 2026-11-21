@@ -579,7 +579,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .callbox .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--sc) 22%, transparent); color: var(--sc); flex: none; }
 .callbox .ic svg { width: 20px; height: 20px; }
 .cme { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin-top: 12px; align-items: end; }
-.cme input, .cadd input { width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(190,170,255,.3); background: rgba(8,7,18,.6); color: #fff; font-size: 15px; }
+.cme input, .cadd input { width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(190,170,255,.3); background: rgba(8,7,18,.6); color: #fff; font-size: 16px; }
 .ccode { margin-top: 4px; padding: 9px 14px; border-radius: 12px; border: 1px dashed rgba(255,255,255,.5); background: rgba(255,255,255,.06); color: #fff; font-family: var(--tech); font-size: 15px; letter-spacing: .18em; }
 .cadd { display: flex; gap: 8px; margin-top: 12px; } .cadd input { margin: 0; text-transform: uppercase; letter-spacing: .12em; } .cadd .btn { flex: none; }
 .cfr { margin-top: 10px; display: grid; gap: 6px; }
@@ -656,3 +656,13 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .call-btns { padding-top: 10px; }
 
 .call-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+
+/* no accidental zoom (double-tap / pinch / input focus) */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+input, select, textarea { font-size: max(16px, 1em); }
+/* deck icons: only the occupied ones, centred */
+.dp-cell:not(.on):not(.send) { display: none; }
+.dp-ic .mono { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-family: var(--sora); font-weight: 700; font-size: 22px; color: #fff;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 60%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 14px var(--c); text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.vic .mono, .vcic .mono, .vmini .mono, .md-art .mono { width: 100%; height: 100%; display: grid; place-items: center; font-weight: 800; color: #fff; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 65%); }
+.md-art .mono { width: 40px; height: 40px; border-radius: 50%; font-size: 18px; box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 12px var(--c); }

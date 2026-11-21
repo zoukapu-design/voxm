@@ -117,8 +117,11 @@ function placeHits() {
   const hit = $('#hitVol'), vol = $('#dkVol');
   if (hit) hit.style.display = vol ? '' : 'none';
   if (hit && vol) { const r = stageRect(vol); const pad = 14; Object.assign(hit.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' }); }
-  $$('.hit-cell').forEach((hc) => { const c = $(`#deck .dp-cell[data-cell="${hc.dataset.cell}"]`); if (!c) return; const r = stageRect(c); Object.assign(hc.style, { left: r.left - 4 + 'px', top: r.top - 10 + 'px', width: r.width + 8 + 'px', height: r.height + 20 + 'px' }); });
+  placeCells();
   drawGuide();
+}
+function placeCells() {
+  $$('.hit-cell').forEach((hc) => { const c = $(`#deck .dp-cell[data-cell="${hc.dataset.cell}"]`); if (!c || !c.classList.contains('on')) { hc.style.display = 'none'; return; } hc.style.display = ''; const r = stageRect(c); Object.assign(hc.style, { left: r.left - 4 + 'px', top: r.top - 10 + 'px', width: r.width + 8 + 'px', height: r.height + 20 + 'px' }); });
 }
 const restTop = () => SLIT_Y - SEAT.show;
 // transform of a chip whose top-centre sits at (x, top), scaled by k (transform-origin: top centre)
@@ -347,7 +350,7 @@ function tween(el, frames, dur, easing) {
   const a = el.animate(frames, { duration: S.reduceMotion ? 1 : dur, easing, fill: 'forwards' });
   return a.finished.catch(() => {}).then(() => { const last = frames[frames.length - 1]; for (const k in last) if (k !== 'offset' && k !== 'easing') el.style[k] = last[k]; try { a.cancel(); } catch (e) {} });
 }
-function cellFx(i, cls) { const e = $(`#deck .dp-cell[data-cell="${i}"]`); if (!e) return; e.classList.remove('pop', 'send'); void e.offsetWidth; e.classList.add(cls); }
+function cellFx(i, cls) { const e = $(`#deck .dp-cell[data-cell="${i}"]`); if (!e) return; e.classList.remove('pop', 'send'); void e.offsetWidth; e.classList.add(cls); if (cls === 'send') setTimeout(() => { e.classList.remove('send'); placeCells(); }, 380); }
 const sleep2 = (ms) => new Promise((r) => setTimeout(r, S.reduceMotion ? 0 : ms));
 
 // A chip back in the slit sinks out of sight (absorbed) and lands in panel cell `cell`.
@@ -634,6 +637,7 @@ function updateDriver() {
     }
   });
   $$('.hit-cell').forEach((b) => { b.disabled = !S.slots[+b.dataset.cell]; });
+  requestAnimationFrame(placeCells);
   const lead = chips[chips.length - 1];
   $('#app').style.setProperty('--tint', lead ? lead.color : '#a487ff');
   updateVol();

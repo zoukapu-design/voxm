@@ -13,6 +13,8 @@ async function boot() {
   if ('serviceWorker' in navigator && location.protocol === 'https:' && !inFrame && window.VOXM_PWA) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
+  // block pinch / double-tap zoom (iOS ignores user-scalable in some cases)
+  document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
   window.VOXM_DEBUG = { S, W, VoxEngine, go, insertCurrent, ejectChip, combinedParams, applyParams, CALL, startCall };
   callInit(); // VOXM calls (no-op until Firebase is configured)
 }
