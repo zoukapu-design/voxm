@@ -2,7 +2,7 @@
 let C = null;
 function newDraft() {
   return { step: 1, editId: null, type: null, name: '', color: COLORS[Math.floor(Math.random() * COLORS.length)], photo: '', art: null,
-    consent: false, sampleBlob: null, analysis: null, profile: { pitch: 0, formant: 0 }, caseIds: [], preset: null, previewing: false };
+    consent: false, sampleBlob: null, analysis: null, voice: null, auto: null, profile: { pitch: 0, formant: 0 }, caseIds: [], preset: null, previewing: false };
 }
 const CHAR_PRESETS = BUILTIN_CHIPS.filter((c) => c.art);
 
@@ -12,7 +12,7 @@ RENDER.create = (opts = {}) => {
     if (c) {
       C = newDraft();
       Object.assign(C, { editId: c.id, type: c.kind === 'fx' || c.kind === 'music' ? 'character' : c.kind, name: c.name, color: c.color, photo: c.photo ? (ASSET[c.photo] || c.photo) : '', art: c.art || null,
-        consent: !!c.consent, analysis: c.analysis || null, profile: JSON.parse(JSON.stringify(c.profile || {})), caseIds: casesOf(c.id).map((k) => k.id), step: 2, keepPhotoKey: c.photo && ASSET[c.photo] ? c.photo : null });
+        consent: !!c.consent, analysis: c.analysis || null, profile: JSON.parse(JSON.stringify(c.profile || {})), caseIds: casesOf(c.id).map((k) => k.id), voice: c.voice || null, auto: c.auto || null, step: 2, keepPhotoKey: c.photo && ASSET[c.photo] ? c.photo : null });
     }
   }
   if (!C || opts.reset) C = newDraft();
@@ -39,7 +39,7 @@ function prevStep() { const s = stepsFor(); const i = s.indexOf(C.step); if (i <
 
 function stepType(body) {
   const types = [
-    ['friend', 'users', '友達の声', '本人の同意をもらって録音。声の高さと声色の傾向を測って、あなたの声をそれに近づけます。'],
+    ['friend', 'users', '友達の声', '本人の同意をもらって録音、または動画・音声ファイルから声を抽出。誰が話しても、その人の声の高さと声色に近づけます。'],
     ['self', 'user', '自分の声', '自分の声をメモリ化。基準の声としても使われ、友達メモリの精度が上がります。'],
     ['character', 'sparkle', 'キャラクター・FX', 'ロボット・モンスターなどのベースを選んで、自分だけのキャラ声を調整。'],
   ];
@@ -120,19 +120,21 @@ function getDecodeCtx() {
 }
 function stepVoice(body) {
   const friend = C.type === 'friend';
-  const needBase = friend && !S.baseline;
+  const needBase = false; // the friend's voice works for anyone now; your own voice is optional (for previews)
   body.innerHTML = `
     ${friend ? `<button class="check ${C.consent ? 'on' : ''}" id="cConsent"><span class="box">${ICON.check}</span><span><b>${esc(C.name)}さん本人から、声を録音してVOXMで使う同意をもらいました。</b><br><span class="small muted">本人のふりをして他人をだます目的には使いません。</span></span></button>` : ''}
-    ${friend ? `<div class="h2">① あなたの基準の声 <small>${S.baseline ? '登録済み ' + Math.round(S.baseline.f0) + 'Hz' : '未登録'}</small></div>
-      <div class="panel" id="baseBox"></div>` : ''}
-    <div class="h2">${friend ? '② ' + esc(C.name) + 'さんの声' : 'あなたの声'} <small>10〜30秒</small></div>
+    <div class="h2">${friend ? '① ' + esc(C.name) + 'さんの声' : 'あなたの声'} <small>セリフ自由・10〜30秒</small></div>
+    ${friend ? `<div class="small muted" style="margin:-4px 2px 10px;line-height:1.6">その場で読み上げてもらうか、<b>${esc(C.name)}さんが話している動画・音声ファイル</b>から声だけを取り出せます。下の文章は例なので、自由に話してもらってOKです。</div>` : ''}
     <div class="panel" id="sampleBox"></div>
+    ${friend ? `<div class="h2">② あなたの声 <small>任意 · ${S.baseline ? '登録済み ' + Math.round(S.baseline.f0) + 'Hz' : '未登録'}</small></div>
+      <div class="small muted" style="margin:-4px 2px 10px;line-height:1.6">なくても大丈夫。変換中に話す人の声を自動で聞き取り、誰が話しても${esc(C.name)}さんの声に近づけます。登録しておくと、最初の数秒から合い、作成画面で試聴もできます。</div>
+      <div class="panel" id="baseBox"></div>` : ''}
     <div id="anaBox"></div>
     <div class="footer-actions"><button class="btn ghost" id="cBack">${ICON.back} 戻る</button><button class="btn" id="cNext" ${C.analysis || (C.editId && !friend) ? '' : 'disabled'}>次へ</button></div>`;
   if (friend) $('#cConsent', body).onclick = () => { C.consent = !C.consent; stepVoice(body); };
   const locked = friend && !C.consent;
   if (friend) recorderBlock($('#baseBox', body), {
-    script: 'あいうえお。今日はいい天気ですね。わたしの声を登録します。', min: 4, max: 15, locked,
+    script: 'あいうえお。今日はいい天気ですね。わたしの声を登録します。', min: 4, max: 15, locked, fileLabel: '音声ファイルから',
     done: !!S.baseline && !needBase, doneLabel: '登録済み（録り直す場合は録音）',
     onClip: async (blob) => {
       const a = await analyzeBlob(blob); if (!a) return;
@@ -144,29 +146,38 @@ function stepVoice(body) {
     },
   });
   recorderBlock($('#sampleBox', body), {
-    script: SAMPLE_SCRIPT, min: 6, max: 40, locked: locked || needBase, lockedMsg: locked ? '先に同意を確認してください' : needBase ? '先に①を録音してください' : '',
-    done: !!C.sampleBlob, doneLabel: '録音済み',
-    onClip: async (blob) => {
-      const a = await analyzeBlob(blob); if (!a) return;
-      C.sampleBlob = blob; C.sampleAnalysisRaw = a;
-      if (friend) computeFriendProfile();
-      else {
-        C.analysis = { f0: a.f0, confidence: 1, voicedRatio: a.voicedRatio, seconds: a.seconds };
-        C.profile = Object.assign({}, C.profile, { pitch: 0, formant: 0 });
-        if (!S.baseline) { const key = uid('base'); await VoxStore.put('blobs', key, blob); S.baseline = { f0: a.f0, env: a.env, envSr: a.envSr, at: Date.now(), blobKey: key }; saveSettings(); }
-      }
-      stepVoice(body);
-    },
+    script: SAMPLE_SCRIPT, min: 6, max: 40, locked, lockedMsg: '先に同意を確認してください',
+    done: !!C.sampleBlob, doneLabel: '登録済み（録り直す・別のファイルも可）',
+    fileLabel: friend ? '動画・音声から声を抽出' : '動画・音声から声を抽出',
+    onFile: async (file) => { const r = await openExtractor(file, friend ? C.name + 'さん' : 'あなた'); if (r) await useSample(r.blob, r.analysis); },
+    onClip: async (blob) => { const a = await analyzeBlob(blob); if (a) await useSample(blob, a); },
   });
+  async function useSample(blob, a) {
+    C.sampleBlob = blob; C.sampleAnalysisRaw = a;
+    C.voice = { f0: a.f0, env: a.env, envSr: a.envSr };
+    if (friend) computeFriendProfile();
+    else {
+      C.analysis = { f0: a.f0, confidence: 1, voicedRatio: a.voicedRatio, seconds: a.seconds };
+      C.profile = Object.assign({}, C.profile, { pitch: 0, formant: 0 }); C.auto = { pitch: 0, formant: 0 };
+      if (!S.baseline) { const key = uid('base'); await VoxStore.put('blobs', key, blob); S.baseline = { f0: a.f0, env: a.env, envSr: a.envSr, at: Date.now(), blobKey: key }; saveSettings(); }
+    }
+    stepVoice(body);
+  }
   if (C.analysis) renderAnalysis($('#anaBox', body));
   $('#cBack', body).onclick = prevStep;
   $('#cNext', body).onclick = nextStep;
 }
 function computeFriendProfile() {
   const a = C.sampleAnalysisRaw;
+  if (!S.baseline) { // no reference voice: the live match does the work
+    C.analysis = { f0: a.f0, baseF0: 0, confidence: 1, voicedRatio: a.voicedRatio, seconds: a.seconds };
+    C.profile = Object.assign({}, C.profile, { pitch: 0, formant: 0 }); C.auto = null;
+    return;
+  }
   const prof = VoxAnalysis.profileFrom(a, S.baseline);
   C.analysis = { f0: a.f0, baseF0: S.baseline.f0, confidence: prof.confidence, voicedRatio: a.voicedRatio, seconds: a.seconds };
   C.profile = Object.assign({}, C.profile, { pitch: prof.pitch, formant: prof.formant });
+  C.auto = { pitch: prof.pitch, formant: prof.formant };
 }
 async function analyzeBlob(blob) {
   try {
@@ -184,12 +195,13 @@ function renderAnalysis(box) {
   if (a.seconds < 4 || a.voicedRatio < 0.15) { q = 'no'; ql = '短すぎ・声が少ない'; }
   box.innerHTML = `<div class="panel" style="margin-top:14px">
     <div class="kv">
-      ${friend ? `<span>${esc(C.name)}さんの平均の高さ</span><b>${Math.round(a.f0)} Hz（${noteName(a.f0)}）</b><span>あなたの平均の高さ</span><b>${Math.round(a.baseF0)} Hz（${noteName(a.baseF0)}）</b>
+      ${friend && !a.baseF0 ? `<span>${esc(C.name)}さんの平均の高さ</span><b>${Math.round(a.f0)} Hz（${noteName(a.f0)}）</b><span>声の長さ</span><b>${a.seconds.toFixed(1)} 秒</b><span>変換のしかた</span><b>話す人に自動で合わせる</b>`
+      : friend ? `<span>${esc(C.name)}さんの平均の高さ</span><b>${Math.round(a.f0)} Hz（${noteName(a.f0)}）</b><span>あなたの平均の高さ</span><b>${Math.round(a.baseF0)} Hz（${noteName(a.baseF0)}）</b>
       <span>→ ピッチ補正</span><b>${signed(C.profile.pitch, 1)} 半音</b><span>→ 声色（フォルマント）補正</span><b>${signed(C.profile.formant, 1)} 半音</b><span>声色の一致度</span><b>${Math.round(a.confidence * 100)}%</b>`
       : `<span>平均の高さ</span><b>${Math.round(a.f0)} Hz（${noteName(a.f0)}）</b><span>録音の長さ</span><b>${a.seconds.toFixed(1)} 秒</b>`}
     </div>
     <div class="quality"><span class="status ${q}">${ql}</span></div>
-    ${friend ? '<div class="small muted" style="margin-top:10px;line-height:1.6">※ 声の高さと声色の傾向を近づける簡易プロファイルです。本人そっくりのAI声質変換ではありません。</div>' : ''}
+    ${friend ? '<div class="small muted" style="margin-top:10px;line-height:1.6">変換中は話す人の声を聞き取り、誰が話しても' + esc(C.name) + 'さんの高さ・声色に合わせます（TUNEでOFFにもできます）。<br>※ 声の高さと声色の傾向を近づける簡易プロファイルです。本人そっくりのAI声質変換ではありません。</div>' : ''}
   </div>`;
 }
 
@@ -204,12 +216,12 @@ function recorderBlock(box, o) {
       <button class="rec-big ${on ? 'on stop' : ''}" data-r aria-label="${on ? '録音を止める' : '録音する'}">${on ? '<i></i>' : ICON.mic}</button>
       <div class="small ${on ? '' : 'muted'}" data-rt>${on ? '録音中 0:00 / 最大' + fmtSec(o.max) : o.done ? '✓ ' + o.doneLabel : 'タップして読み上げ（' + o.min + '秒以上）'}</div>
       <div class="meter"><i data-rl></i></div>
-      ${on ? '' : `<label class="btn ghost sm" style="margin-top:6px">${ICON.upload} 音声ファイルから<input type="file" accept="audio/*,video/*" data-f hidden></label>`}`}
+      ${on ? '' : `<label class="btn ghost sm" style="margin-top:6px">${ICON.upload} ${o.fileLabel || '音声ファイルから'}<input type="file" accept="audio/*,video/*" data-f hidden></label>`}`}
     </div>`;
     const r = box.querySelector('[data-r]');
     if (r) r.onclick = () => (rec.state === 'rec' ? stop() : start());
     const f = box.querySelector('[data-f]');
-    if (f) f.onchange = (e) => { const file = e.target.files && e.target.files[0]; if (file) o.onClip(file); };
+    if (f) f.onchange = (e) => { const file = e.target.files && e.target.files[0]; e.target.value = ''; if (file) (o.onFile || o.onClip)(file); };
   };
   let stream = null, mr = null, chunks = [], an = null, raf = 0, actx = null;
   async function start() {
@@ -274,7 +286,8 @@ function stepTune(body) {
     <div class="h2">入れるケース</div>
     <div class="chips-row">${S.cases.map((k) => `<button class="pill ${C.caseIds.includes(k.id) ? 'on' : ''}" data-kc="${k.id}"><i class="swatch" style="--c:${k.color};width:10px;height:10px;border-radius:3px;border:0"></i>${esc(k.name)}</button>`).join('')}</div>
     <div class="footer-actions"><button class="btn ghost" id="cBack">${ICON.back} 戻る</button><button class="btn" id="cSave">${ICON.check} ${C.editId ? '保存' : 'メモリを作成'}</button></div>`;
-  const live = () => { if (C.previewing && VoxEngine.status.state === 'live') VoxEngine.setParams(Object.assign({}, VoxEngine.DEFAULT, C.profile)); };
+  const previewP = () => Object.assign({}, VoxEngine.DEFAULT, C.voice ? draftVoiceProfile(C.profile, C.voice, C.auto) : C.profile);
+  const live = () => { if (C.previewing && VoxEngine.status.state === 'live') VoxEngine.setParams(previewP()); };
   const refresh = () => { $('#cPrev', body).innerHTML = chipHTML(draftChip()); live(); };
   for (const k of ['pitch', 'formant']) bindSlider(body, k, (v) => st(v) + ' 半音', (v) => { C.profile[k] = v; refresh(); });
   for (const k of ['ring', 'chorus', 'echo', 'reverb', 'drive']) bindSlider(body, k, pct, (v) => { C.profile[k] = v; if (k === 'ring' && !C.profile.ringHz) C.profile.ringHz = 40; refresh(); });
@@ -288,7 +301,7 @@ function stepTune(body) {
   $('#cLive', body).onclick = async () => {
     if (C.previewing && VoxEngine.status.state === 'live') { endPreview(); stepTune(body); return; }
     C.previewing = true;
-    VoxEngine.setParams(Object.assign({}, VoxEngine.DEFAULT, C.profile));
+    VoxEngine.setParams(previewP());
     if (VoxEngine.status.state !== 'live') { VoxEngine.status.monitor = true; VoxEngine.status.volume = S.volume; await VoxEngine.start(await audioOpts()); }
     else VoxEngine.setMonitor(true);
     if (VoxEngine.status.state !== 'live') { C.previewing = false; showMicHelp(); return; }
@@ -325,6 +338,8 @@ async function saveDraft() {
     photo: C.keepPhotoKey || C.photo || '', art: C.photo || C.keepPhotoKey ? null : (C.type === 'character' ? C.art || 'wave' : null),
     profile: JSON.parse(JSON.stringify(C.profile)), analysis: C.analysis || chip.analysis || null,
   });
+  if (C.voice) { chip.voice = C.voice; chip.auto = C.auto || null; }
+  delete SPK.cache[chip.id];
   if (C.type === 'friend' && C.consent && !chip.consent) chip.consent = { at: Date.now() };
   if (chip.builtin && !isNew) { chip.demo = chip.demo && !C.sampleBlob; }
   if (C.sampleBlob) { const key = chip.sampleKey || uid('s'); await VoxStore.put('blobs', key, C.sampleBlob); chip.sampleKey = key; }

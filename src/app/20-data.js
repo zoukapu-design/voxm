@@ -102,7 +102,7 @@ const S = {
   homeCase: 'all',
   fx: [], // [{id, amt}]
   fineTune: 0,
-  monitor: true, volume: 0.8, nativeAudio: true, debugHud: false, safeMode: true, noiseSup: false, reduceMotion: false, ticks: true,
+  monitor: true, volume: 0.8, nativeAudio: true, debugHud: false, autoMatch: true, safeMode: true, noiseSup: false, reduceMotion: false, ticks: true,
   baseline: null, // {f0, env, envSr, at, blobKey}
   recordings: [],
   memTab: 'chips', memQuery: '', memKind: 'all',
@@ -140,7 +140,7 @@ async function loadAll() {
   }
   S.seenBuiltins = BUILTIN_CHIPS.map((c) => c.id);
   if (!kv || !kv.seenBuiltins || !kv.seenCases) saveSettings();
-  if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline', 'call', 'nativeAudio', 'debugHud']) if (k in kv) S[k] = kv[k];
+  if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline', 'call', 'nativeAudio', 'debugHud', 'autoMatch']) if (k in kv) S[k] = kv[k];
   if (kv && !kv.slots && kv.insertedId) S.slots = [null, kv.insertedId, null]; // single-slot era
   if (!chipById(S.selectedId)) S.selectedId = S.chips[0]?.id || null;
   S.slots = [0, 1, 2, 3].map((i) => (Array.isArray(S.slots) && chipById(S.slots[i]) ? S.slots[i] : null));
@@ -153,7 +153,7 @@ function saveSettings() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     const kv = {};
-    for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline', 'call', 'nativeAudio', 'debugHud']) kv[k] = S[k];
+    for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline', 'call', 'nativeAudio', 'debugHud', 'autoMatch']) kv[k] = S[k];
     kv.removedBuiltins = S.removedBuiltins || [];
     kv.seenBuiltins = S.seenBuiltins || BUILTIN_CHIPS.map((c) => c.id);
     kv.seenCases = S.seenCases || BUILTIN_CASES.map((c) => c.id);
@@ -197,8 +197,9 @@ function combinedParams() {
   const chips = seatedChips();
   const p = Object.assign({}, VoxEngine.DEFAULT);
   const voices = chips.filter((c) => c.kind === 'friend' || c.kind === 'self');
-  for (const k of ADDITIVE) if (voices.length) p[k] = voices.reduce((s, c) => s + ((c.profile || {})[k] || 0), 0) / voices.length;
-  for (const c of voices) layerParams(p, c.profile, 1, true);
+  const vp = voices.map((c) => effVoiceProfile(c)); // friend/self chips follow whoever is speaking
+  for (const k of ADDITIVE) if (voices.length) p[k] = vp.reduce((s, q) => s + ((q || {})[k] || 0), 0) / voices.length;
+  for (const q of vp) layerParams(p, q, 1, true);
   for (const c of chips) if (!voices.includes(c)) layerParams(p, c.profile, 1);
   for (const layer of S.fx) { const fx = FX_LIB.find((f) => f.id === layer.id); if (fx) layerParams(p, fx.p, layer.amt); }
   p.pitch = clamp(p.pitch + S.fineTune, -12, 14);

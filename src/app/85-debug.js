@@ -7,6 +7,7 @@ function dbgTick(force) {
   if (st.state !== DBG.lastState) { VLOG.add('ENG', 'state', DBG.lastState || '-', '→', st.state, st.error || ''); DBG.lastState = st.state; }
   if (!force && st.state !== 'live' && !DBG.hud) return null;
   const d = VoxEngine.debug();
+  const sv = spkVoice(); d.spk = sv ? { f0: Math.round(sv.f0), env: SPK.envReady, n: SPK.f0s.length } : null; d.match = SPK.cache;
   d.slots = (S.slots || []).filter(Boolean).length; d.tab = (document.querySelector('.tab.on, .tabbar .on') || {}).textContent || ''; d.vis = document.visibilityState;
   return d;
 }
@@ -53,6 +54,7 @@ function drawHud(d) {
     `IN  ${bar(d.inRms)}`,
     `OUT ${bar(d.outRms)}`,
     `mic ${d.mic ? `${d.mic.ready}${d.mic.muted ? ' MUTED' : ''} ec=${d.mic.ec}` : '—'}  mon=${d.monitor ? 'ON' : 'OFF'} vol=${d.vol}`,
+    `spk ${d.spk ? d.spk.f0 + 'Hz n' + d.spk.n + (d.spk.env ? ' env✓' : ' env…') : '—'}  match ${Object.values(d.match || {}).map((m) => (m.pitch >= 0 ? '+' : '') + m.pitch.toFixed(1) + '/' + m.formant.toFixed(1)).join(' ') || '—'}`,
     `lat base ${d.base}ms out ${d.outLat}ms core ${d.coreLat}ms  heal ${d.restarts}${d.needsResume ? ' NEED-TAP' : ''}`,
     n ? `iOS ${n.category || '?'}/${n.mode || '?'} out=${(n.outputs || []).join(',')} in=${(n.inputs || []).join(',')}` : (VoxNative.isNative() ? 'iOS diag: 応答なし' : 'web'),
     n ? `iOS sr ${n.sampleRate} io ${n.ioBuffer != null ? (n.ioBuffer * 1000).toFixed(1) : '?'}ms vol ${n.outputVolume != null ? n.outputVolume.toFixed(2) : '?'} other=${n.otherAudio}` : '',

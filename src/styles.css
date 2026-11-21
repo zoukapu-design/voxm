@@ -684,3 +684,10 @@ input, select, textarea { font-size: max(16px, 1em); }
 .dbg-hud .dh-txt { white-space: pre-wrap; word-break: break-all; }
 .dbg-hud .dh-row { display: flex; gap: 6px; margin-top: 6px; pointer-events: auto; }
 .dbg-hud button { flex: 1; height: 26px; border-radius: 7px; border: 1px solid rgba(120,255,170,.35); background: rgba(120,255,170,.08); color: #b9ffd2; font: 600 11px/1 system-ui; }
+
+/* voice extractor */
+.ex-cand { display: flex; align-items: center; gap: 10px; padding: 10px; margin-top: 8px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.03); }
+.ex-cand .grow { min-width: 0; }
+.ex-tl { position: relative; height: 8px; margin-top: 7px; border-radius: 4px; background: rgba(255,255,255,.06); overflow: hidden; }
+.ex-tl i { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg, var(--violet), #6fd3ff); border-radius: 2px; }
+.ex-play { flex: none; }
