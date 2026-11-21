@@ -177,7 +177,7 @@ function computeFriendProfile() {
   const prof = VoxAnalysis.profileFrom(a, S.baseline);
   C.analysis = { f0: a.f0, baseF0: S.baseline.f0, confidence: prof.confidence, voicedRatio: a.voicedRatio, seconds: a.seconds };
   C.profile = Object.assign({}, C.profile, { pitch: prof.pitch, formant: prof.formant });
-  C.auto = { pitch: prof.pitch, formant: prof.formant };
+  C.auto = { pitch: prof.pitch, formant: prof.formant }; C.autoEq = prof.eq;
 }
 async function analyzeBlob(blob) {
   try {
@@ -291,7 +291,7 @@ function stepTune(body) {
     <div class="h2">入れるケース</div>
     <div class="chips-row">${S.cases.map((k) => `<button class="pill ${C.caseIds.includes(k.id) ? 'on' : ''}" data-kc="${k.id}"><i class="swatch" style="--c:${k.color};width:10px;height:10px;border-radius:3px;border:0"></i>${esc(k.name)}</button>`).join('')}</div>
     <div class="footer-actions"><button class="btn ghost" id="cBack">${ICON.back} 戻る</button><button class="btn" id="cSave">${ICON.check} ${C.editId ? '保存' : 'メモリを作成'}</button></div>`;
-  const previewP = () => Object.assign({}, VoxEngine.DEFAULT, C.voice ? draftVoiceProfile(C.profile, C.voice, C.auto) : C.profile);
+  const previewP = () => Object.assign({}, VoxEngine.DEFAULT, C.voice ? draftVoiceProfile(C.profile, C.voice, C.auto, C.autoEq) : C.profile);
   const live = () => { if (C.previewing && VoxEngine.status.state === 'live') VoxEngine.setParams(previewP()); };
   const refresh = () => { $('#cPrev', body).innerHTML = chipHTML(draftChip()); live(); };
   for (const k of ['pitch', 'formant']) bindSlider(body, k, (v) => st(v) + ' 半音', (v) => { C.profile[k] = v; refresh(); });
@@ -317,7 +317,8 @@ function stepTune(body) {
     if (!blob) { toast('基準の録音が見つかりません'); return; }
     try {
       const { samples, sampleRate } = await VoxAnalysis.decodeBlob(blob, getDecodeCtx());
-      const out = await VoxEngine.renderOffline(samples, sampleRate, C.profile);
+      const q = Object.assign({}, C.profile); if (C.autoEq) C.autoEq.forEach((v, i) => { q['tm' + i] = (q['tm' + i] || 0) + v; });
+      const out = await VoxEngine.renderOffline(samples, sampleRate, q);
       playBuffer(out);
     } catch (e) { console.warn(e); toast('試聴を作れませんでした'); }
   };
@@ -343,7 +344,7 @@ async function saveDraft() {
     photo: C.keepPhotoKey || C.photo || '', art: C.photo || C.keepPhotoKey ? null : (C.type === 'character' ? C.art || 'wave' : null),
     profile: JSON.parse(JSON.stringify(C.profile)), analysis: C.analysis || chip.analysis || null,
   });
-  if (C.voice) { chip.voice = C.voice; chip.auto = C.auto || null; }
+  if (C.voice) { chip.voice = C.voice; chip.auto = C.auto || null; chip.autoEq = C.auto ? C.autoEq || null : null; }
   delete SPK.cache[chip.id];
   if (C.type === 'friend' && C.consent && !chip.consent) chip.consent = { at: Date.now() };
   if (chip.builtin && !isNew) { chip.demo = chip.demo && !C.sampleBlob; }

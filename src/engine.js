@@ -14,7 +14,7 @@ const VoxEngine = (() => {
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => { try { fn(st); } catch (e) { console.warn(e); } });
 
-  const DEFAULT = { pitch: 0, formant: 0, robotHz: 0, ring: 0, ringHz: 40, vib: 0, vibHz: 5.5, tune: 0, trem: 0, tremHz: 6, crush: 0, water: 0, inst: 0, instMix: 0.85, instOct: 0, perc: 0, blip: 0, harm: 0, harmType: 0, voc: 0, comb: 0, combMs: 5, wah: 0, glitch: 0, boost: 0, lowcut: 70, highcut: 16000, bass: 0, presence: 0, drive: 0, chorus: 0, echo: 0, reverb: 0 };
+  const DEFAULT = { pitch: 0, formant: 0, robotHz: 0, ring: 0, ringHz: 40, vib: 0, vibHz: 5.5, tune: 0, trem: 0, tremHz: 6, crush: 0, water: 0, inst: 0, instMix: 0.85, instOct: 0, perc: 0, blip: 0, harm: 0, harmType: 0, voc: 0, comb: 0, combMs: 5, wah: 0, glitch: 0, boost: 0, lowcut: 70, highcut: 16000, bass: 0, presence: 0, tm0: 0, tm1: 0, tm2: 0, tm3: 0, tm4: 0, tm5: 0, drive: 0, chorus: 0, echo: 0, reverb: 0 };
 
   function supported() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.AudioContext || window.webkitAudioContext));
@@ -49,6 +49,10 @@ const VoxEngine = (() => {
   // Native-node FX chain. Works on AudioContext and OfflineAudioContext.
   function buildFx(ctx, input) {
     const n = {};
+    // timbre match: peaking bands driven by the friend's tone vs the current speaker (tm0..tm5, dB)
+    n.tm = [320, 650, 1150, 2000, 3200, 5000].map((f) => { const b = ctx.createBiquadFilter(); b.type = 'peaking'; b.frequency.value = f; b.Q.value = 1.1; b.gain.value = 0; return b; });
+    for (let i = 1; i < n.tm.length; i++) n.tm[i - 1].connect(n.tm[i]);
+    input.connect(n.tm[0]); input = n.tm[n.tm.length - 1];
     n.bass = ctx.createBiquadFilter(); n.bass.type = 'lowshelf'; n.bass.frequency.value = 180;
     n.pres = ctx.createBiquadFilter(); n.pres.type = 'peaking'; n.pres.frequency.value = 3000; n.pres.Q.value = 0.9;
     n.hp = ctx.createBiquadFilter(); n.hp.type = 'highpass'; n.hp.Q.value = 0.7;
@@ -87,6 +91,7 @@ const VoxEngine = (() => {
       const t = ctx.currentTime;
       const set = (param, v) => { if (instant || !param.setTargetAtTime) param.value = v; else param.setTargetAtTime(v, t, 0.03); };
       set(n.bass.gain, p.bass); set(n.pres.gain, p.presence);
+      for (let i = 0; i < 6; i++) set(n.tm[i].gain, Math.max(-12, Math.min(12, p['tm' + i] || 0)));
       set(n.hp.frequency, Math.max(20, p.lowcut)); set(n.lp.frequency, Math.min(ctx.sampleRate / 2 - 100, p.highcut));
       const dr = Math.round(p.drive * 20) / 20;
       if (dr !== lastDrive) { n.shaper.curve = shaperCurve(dr); lastDrive = dr; }

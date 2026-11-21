@@ -63,6 +63,7 @@ async function decodeAny(file, onProg) {
 function openExtractor(file, who) {
   return new Promise((resolve) => {
     let result = null, audio = null, playing = null;
+    const stopPreview = () => { try { if (playing) { playing.pause(); playing = null; } } catch (e) {} };
     openSheet('声を取り出す', `<div id="exBody"><div class="small muted" id="exMsg">読み込み中…</div><div class="meter" style="margin-top:10px"><i id="exBar" style="width:2%"></i></div></div>`, async (b, close) => {
       const msg = (t) => { const e = $('#exMsg', b); if (e) e.textContent = t; };
       const bar = (v) => { const e = $('#exBar', b); if (e) e.style.width = Math.round(v * 100) + '%'; };
@@ -83,23 +84,29 @@ function openExtractor(file, who) {
       const dur = seg.duration;
       const box = $('#exBody', b);
       box.innerHTML = `<p class="lead" style="margin-top:0">${seg.candidates.length > 1 ? `${seg.candidates.length}人分の声が見つかりました。▶で聴いて、${esc(who)}の声を選んでください。` : '声が見つかりました。▶で確認して選んでください。'}</p>
+        <div class="small muted" style="margin:-6px 0 6px">動画 ${Math.round(dur)}秒のうち、話し声 ${Math.round(seg.speech || 0)}秒を検出</div>
         ${seg.candidates.map((c, i) => `<div class="ex-cand" data-i="${i}">
           <button class="icon-btn ex-play" data-play="${i}" aria-label="再生">${ICON.play}</button>
           <div class="grow"><b>声 ${String.fromCharCode(65 + i)}</b> <span class="small muted">${c.seconds}秒 · 平均 ${Math.round(c.f0)}Hz（${noteName(c.f0)}）</span>
             <div class="ex-tl">${c.segments.map(([a, z]) => `<i style="left:${(a / dur) * 100}%;width:${Math.max(0.6, ((z - a) / dur) * 100)}%"></i>`).join('')}</div></div>
           <button class="btn sm" data-pick="${i}">この声</button></div>`).join('')}
         <div class="small muted" style="margin-top:10px;line-height:1.6">本人の同意を得た声だけを使ってください。取り出した声は端末内にだけ保存されます。</div>`;
+      // preview through an <audio> element (plays reliably on iOS, even while converting)
       $$('[data-play]', box).forEach((btn) => btn.onclick = () => {
         const c = seg.candidates[+btn.dataset.play];
-        try { playing && playing.stop(); } catch (e) {}
-        const clip = VoxAnalysis.sliceSegments(dec.samples, dec.sampleRate, c.segments, 6);
-        const ctx = getDecodeCtx();
-        const ab = ctx.createBuffer(1, clip.length, dec.sampleRate); ab.getChannelData(0).set(clip);
-        playing = ctx.createBufferSource(); playing.buffer = ab; playing.connect(ctx.destination); playing.start();
+        stopPreview();
+        const clip = VoxAnalysis.sliceSegments(dec.samples, dec.sampleRate, c.segments, 10);
+        let pk = 0; for (let k = 0; k < clip.length; k++) pk = Math.max(pk, Math.abs(clip[k]));
+        if (pk > 0 && pk < 0.5) { const g = 0.7 / pk; for (let k = 0; k < clip.length; k++) clip[k] *= g; }
+        const url = URL.createObjectURL(VoxAnalysis.wavBlob(clip, Math.round(dec.sampleRate)));
+        playing = new Audio(url); playing.playsInline = true;
+        playing.onended = () => { URL.revokeObjectURL(url); btn.innerHTML = ICON.play; };
+        playing.play().then(() => { btn.innerHTML = '■'; }).catch((e) => { VLOG.add('WARN', 'preview play', e); toast('再生できませんでした'); });
       });
       $$('[data-pick]', box).forEach((btn) => btn.onclick = () => {
         const c = seg.candidates[+btn.dataset.pick];
-        const voice = VoxAnalysis.sliceSegments(dec.samples, dec.sampleRate, c.segments, 40);
+        stopPreview();
+        const voice = VoxAnalysis.sliceSegments(dec.samples, dec.sampleRate, c.segments, 60);
         const a = VoxAnalysis.analyze(voice, dec.sampleRate);
         if (!a.ok) { toast('この声はうまく解析できませんでした。別の候補か、長めのファイルで試してください', 3500); return; }
         // store at 16 kHz-ish to keep the sample small
@@ -109,6 +116,6 @@ function openExtractor(file, who) {
         VLOG.add('APP', 'extract picked', String.fromCharCode(65 + +btn.dataset.pick), c.seconds + 's', Math.round(a.f0) + 'Hz');
         close();
       });
-    }, { onClose: () => { try { playing && playing.stop(); } catch (e) {} audio = null; resolve(result); } });
+    }, { onClose: () => { stopPreview(); audio = null; resolve(result); } });
   });
 }

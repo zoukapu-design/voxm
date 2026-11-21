@@ -178,7 +178,7 @@ function wheelList() {
 const seatedChips = () => S.slots.map(chipById).filter(Boolean);
 const isSeated = (id) => !!id && S.slots.includes(id);
 const seatedName = (sep = ' × ') => seatedChips().map((c) => c.name).join(sep);
-const ADDITIVE = ['pitch', 'formant', 'bass', 'presence'];
+const ADDITIVE = ['pitch', 'formant', 'bass', 'presence', 'tm0', 'tm1', 'tm2', 'tm3', 'tm4', 'tm5'];
 function layerParams(p, src, a, skipAdditive) {
   for (const [k, v] of Object.entries(src || {})) {
     if (ADDITIVE.includes(k)) { if (!skipAdditive) p[k] += v * a; }

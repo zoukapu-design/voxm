@@ -53,10 +53,10 @@ function liveMatch(voice) {
   const me = spkVoice();
   if (!me || !voice || !voice.f0) return null;
   const pitch = Math.max(-12, Math.min(12, 12 * Math.log2(voice.f0 / me.f0)));
-  let formant;
-  if (me.env && voice.env) formant = VoxAnalysis.profileFrom(voice, me).formant;
+  let formant, eq = null;
+  if (me.env && voice.env) { const pr = VoxAnalysis.profileFrom(voice, me); formant = pr.formant; eq = pr.eq; }
   else formant = pitch * 0.33; // until the envelope settles: formants roughly follow the pitch gap
-  return { pitch, formant };
+  return { pitch, formant, eq };
 }
 
 // effective profile of a seated chip, used by combinedParams()
@@ -65,12 +65,13 @@ function effVoiceProfile(c) {
   if (S.autoMatch === false || !c.voice || !(c.kind === 'friend' || c.kind === 'self')) return p;
   const m = SPK.cache[c.id] || liveMatch(c.voice);
   const auto = c.auto || { pitch: 0, formant: 0 };
-  if (!m) return c.auto ? p : Object.assign({}, p, { pitch: (p.pitch || 0) - auto.pitch, formant: (p.formant || 0) - auto.formant });
-  return Object.assign({}, p, { pitch: m.pitch + (p.pitch || 0) - auto.pitch, formant: m.formant + (p.formant || 0) - auto.formant });
+  const withEq = (q, eq) => { if (eq) for (let i = 0; i < 6; i++) q['tm' + i] = (p['tm' + i] || 0) + eq[i]; return q; };
+  if (!m) return c.auto ? withEq(Object.assign({}, p), c.autoEq) : Object.assign({}, p, { pitch: (p.pitch || 0) - auto.pitch, formant: (p.formant || 0) - auto.formant });
+  return withEq(Object.assign({}, p, { pitch: m.pitch + (p.pitch || 0) - auto.pitch, formant: m.formant + (p.formant || 0) - auto.formant }), m.eq);
 }
 // the create screen's live preview
-function draftVoiceProfile(profile, voice, auto) {
-  return effVoiceProfile({ id: '__draft', kind: 'friend', profile, voice, auto });
+function draftVoiceProfile(profile, voice, auto, autoEq) {
+  return effVoiceProfile({ id: '__draft', kind: 'friend', profile, voice, auto, autoEq });
 }
 
 function spkLoop() {
@@ -86,15 +87,16 @@ function spkLoop() {
   for (const c of targets) {
     const m = liveMatch(c.voice); if (!m) continue;
     const old = SPK.cache[c.id];
-    if (!old || Math.abs(old.pitch - m.pitch) > 0.15 || Math.abs(old.formant - m.formant) > 0.15) {
+    const eqMoved = m.eq && (!old || !old.eq || m.eq.some((v, i) => Math.abs(v - old.eq[i]) > 0.7));
+    if (!old || eqMoved || Math.abs(old.pitch - m.pitch) > 0.15 || Math.abs(old.formant - m.formant) > 0.15) {
       // glide large corrections over a few seconds so the voice doesn't lurch
       const step = (a, b) => (old ? a + Math.max(-1.5, Math.min(1.5, b - a)) : b);
-      SPK.cache[c.id] = { pitch: step(old ? old.pitch : 0, m.pitch), formant: step(old ? old.formant : 0, m.formant) };
+      SPK.cache[c.id] = { pitch: step(old ? old.pitch : 0, m.pitch), formant: step(old ? old.formant : 0, m.formant), eq: m.eq };
       changed = true;
     }
   }
   if (!changed) return;
-  if (draft) { delete SPK.cache.__draft; const m = liveMatch(C.voice); if (m) SPK.cache.__draft = m; VoxEngine.setParams(Object.assign({}, VoxEngine.DEFAULT, draftVoiceProfile(C.profile, C.voice, C.auto))); }
+  if (draft) { delete SPK.cache.__draft; const m = liveMatch(C.voice); if (m) SPK.cache.__draft = m; VoxEngine.setParams(Object.assign({}, VoxEngine.DEFAULT, draftVoiceProfile(C.profile, C.voice, C.auto, C.autoEq))); }
   else applyParams();
   if (Date.now() - SPK.lastShown > 30000) { SPK.lastShown = Date.now(); VLOG.add('SPK', 'match', Math.round(spkVoice().f0) + 'Hz', SPK.envReady ? 'env ok' : 'env learning', JSON.stringify(SPK.cache)); }
 }
@@ -110,6 +112,7 @@ async function ensureVoices() {
       const a = VoxAnalysis.analyze(samples, sampleRate); if (!a.ok) continue;
       c.voice = { f0: a.f0, env: a.env, envSr: a.envSr };
       c.auto = { pitch: (c.profile || {}).pitch || 0, formant: (c.profile || {}).formant || 0 }; // tuned against the creator's voice
+      if (S.baseline && S.baseline.env) c.autoEq = VoxAnalysis.profileFrom(a, S.baseline).eq;
       saveChip(c);
       VLOG.add('SPK', 'voice rebuilt', c.name, Math.round(a.f0) + 'Hz');
     } catch (e) { VLOG.add('WARN', 'ensureVoices', c.name, e); }
