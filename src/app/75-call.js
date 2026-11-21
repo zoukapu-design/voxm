@@ -237,38 +237,79 @@ function startRing(out) {
 function stopRing() { clearInterval(CALL.ring); CALL.ring = 0; }
 
 /* ---- call UI: full-screen overlay (can be minimised to a pill while you change chips) ---- */
-let callTick = 0;
+let callTick = 0, callRaf = 0, remoteAn = null, prevRemote = '';
 const avatarOf = (name, color) => `<span class="cav" style="--c:${color || '#a487ff'}">${esc((name || '?').slice(0, 1))}</span>`;
-const miniChip = (c) => `<span class="cchip" style="--c:${c.color}">${c.thumb ? `<img src="${c.thumb}" alt="">` : c.art && ART[c.art] ? `<span class="art">${artSVG(c.art, c.color)}</span>` : `<span class="art"></span>`}<b>${esc(c.name)}</b></span>`;
+const chipArt = (c) => c.thumb ? `<img src="${c.thumb}" alt="">` : c.art && ART[c.art] ? `<span class="art">${artSVG(c.art, c.color)}</span>` : `<span class="art"></span>`;
+const miniChip = (c) => `<span class="cchip" style="--c:${c.color}">${chipArt(c)}<b>${esc(c.name)}</b></span>`;
+// a small pearl deck with the chips shown on it (same look as the home deck)
+function miniDeck(chips, side, label, name, fresh) {
+  const lead = chips[chips.length - 1];
+  return `<div class="mdeck ${side}" style="--tint:${lead ? lead.color : '#a487ff'}">
+    <div class="md-head"><span>${label}</span><b>${esc(name)}</b>${side === 'me' ? '<button class="md-edit" id="cChange">差し替える</button>' : `<em>${chips.length ? chips.length + '枚' : '素の声'}</em>`}</div>
+    <div class="md-body"><div class="md-plate"><i class="md-slit"></i></div>
+      <div class="md-icons">${[0, 1, 2, 3].map((i) => {
+        const c = chips[i];
+        return c ? `<div class="md-ic ${fresh && fresh.has(c.name) ? 'new' : ''}" style="--c:${c.color};--d:${i * 0.06}s"><span class="md-art">${chipArt(c)}</span><em>${esc(c.name)}</em></div>`
+          : `<div class="md-ic empty"><i></i></div>`;
+      }).join('')}</div></div></div>`;
+}
+function remoteLevel() {
+  try {
+    const st = VoxEngine.status;
+    if (!remoteAn && CALL.audio && CALL.audio.srcObject && st.ctx) {
+      const src = st.ctx.createMediaStreamSource(CALL.audio.srcObject);
+      remoteAn = st.ctx.createAnalyser(); remoteAn.fftSize = 512; src.connect(remoteAn);
+    }
+    if (!remoteAn) return 0;
+    const b = new Float32Array(512); remoteAn.getFloatTimeDomainData(b);
+    let pk = 0; for (let i = 0; i < 512; i += 2) pk = Math.max(pk, Math.abs(b[i]));
+    return Math.min(1, pk * 1.6);
+  } catch (e) { return 0; }
+}
+function callLevels() {
+  const ov = $('#callOv'); if (!ov || CALL.state === 'idle') { callRaf = 0; return; }
+  const me = CALL.muted ? 0 : W.lv || 0, them = CALL.state === 'active' ? remoteLevel() : 0;
+  ov.style.setProperty('--lvMe', me.toFixed(3)); ov.style.setProperty('--lvThem', them.toFixed(3));
+  callRaf = requestAnimationFrame(callLevels);
+}
 function renderCallUI() {
   let ov = $('#callOv');
-  if (CALL.state === 'idle') { if (ov) ov.remove(); clearInterval(callTick); callTick = 0; const pill = $('#callPill'); if (pill) pill.remove(); return; }
+  if (CALL.state === 'idle') { if (ov) ov.remove(); clearInterval(callTick); callTick = 0; remoteAn = null; prevRemote = ''; return; }
   if (!ov) { ov = document.createElement('div'); ov.id = 'callOv'; ov.className = 'call-ov'; document.body.append(ov); }
-  if (CALL.min) { ov.classList.add('min'); } else ov.classList.remove('min');
+  ov.classList.toggle('min', !!CALL.min);
   const p = CALL.peer || {};
-  const status = CALL.state === 'ringing' ? '着信中…' : CALL.state === 'calling' ? '呼び出し中…' : CALL.state === 'connecting' ? '接続中…' : fmtSec((Date.now() - CALL.t0) / 1000);
-  const mine = seatedChips().map((c) => ({ name: c.name, color: c.color, art: c.art, thumb: '' }));
+  const status = CALL.state === 'ringing' ? '着信中' : CALL.state === 'calling' ? '呼び出し中' : CALL.state === 'connecting' ? '接続中' : fmtSec((Date.now() - CALL.t0) / 1000);
+  const mine = seatedChips().map((c) => ({ name: c.name, color: c.color, art: c.art, thumb: c.photo ? ((typeof ASSET !== 'undefined' && ASSET[c.photo]) || c.photo) : '' }));
+  const names = CALL.remoteChips.map((c) => c.name);
+  const fresh = new Set(prevRemote ? names.filter((n) => !prevRemote.split('|').includes(n)) : []);
+  prevRemote = names.join('|') || ' ';
+  const live = CALL.state === 'active';
   ov.innerHTML = CALL.min ? `<button class="call-pill" id="cpOpen"><i></i>${esc(p.name || '')} · ${status}</button>` : `
     <div class="call-bg"></div>
-    <div class="call-top"><button class="icon-btn" id="cMin" aria-label="小さくする">${ICON.back}</button><span class="eyebrow" style="margin:0">VOXM CALL</span><span style="width:40px"></span></div>
-    <div class="call-peer">${avatarOf(p.name, CALL.remoteChips[0] && CALL.remoteChips[0].color)}<b>${esc(p.name || '')}</b><span class="call-st">${status}</span></div>
-    <div class="call-chips"><div class="cc-h">相手のチップ</div><div class="cc-row" id="ccRemote">${CALL.remoteChips.length ? CALL.remoteChips.map(miniChip).join('') : '<span class="small muted">素の声</span>'}</div></div>
-    <div class="call-chips"><div class="cc-h">あなたのチップ <button class="link" id="cChange">変更</button></div><div class="cc-row">${mine.length ? mine.map(miniChip).join('') : '<span class="small muted">素の声</span>'}</div></div>
-    <div class="call-btns">${CALL.state === 'ringing' ? `<button class="cbig no" id="cDecline">${ICON.close}<span>拒否</span></button><button class="cbig yes" id="cAccept">${ICON.phone || ICON.mic}<span>応答</span></button>`
+    <div class="call-top"><button class="icon-btn" id="cMin" aria-label="小さくする">${ICON.back}</button><span class="eyebrow" style="margin:0">VOXM CALL</span><span class="call-st ${live ? 'live' : ''}">${live ? '<i></i>' : ''}${status}</span></div>
+    <div class="call-mid">
+    ${miniDeck(CALL.remoteChips, 'them', live || CALL.state === 'ringing' ? '相手' : '呼び出し先', p.name || '', fresh)}
+    <div class="call-link ${live ? 'live' : ''}"><span class="cl-av">${avatarOf(p.name, CALL.remoteChips[0] && CALL.remoteChips[0].color)}</span>
+      <div class="cl-wave">${Array.from({ length: 15 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
+      <span class="cl-av me">${avatarOf(S.call && S.call.name, mine[0] && mine[0].color)}</span></div>
+    ${miniDeck(mine, 'me', 'あなた', (S.call && S.call.name) || '')}
+    </div>
+    <div class="call-btns" style="margin-top:0">${CALL.state === 'ringing' ? `<button class="cbig no" id="cDecline">${ICON.close}<span>拒否</span></button><button class="cbig yes" id="cAccept">${ICON.phone}<span>応答</span></button>`
       : `<button class="cbig ${CALL.muted ? 'on' : ''}" id="cMute">${ICON.mic}<span>${CALL.muted ? 'ミュート中' : 'ミュート'}</span></button><button class="cbig no" id="cEnd">${ICON.close}<span>終了</span></button>`}</div>`;
   const b = (id, fn) => { const e = $('#' + id, ov); if (e) e.onclick = fn; };
   b('cAccept', acceptCall); b('cDecline', declineCall); b('cEnd', () => endCall(false)); b('cMute', toggleMute);
   b('cMin', () => { CALL.min = true; renderCallUI(); });
   b('cChange', () => { CALL.min = true; renderCallUI(); go('home'); toast('チップを差し替えると、相手にも伝わります'); });
   b('cpOpen', () => { CALL.min = false; renderCallUI(); });
-  if (!callTick) callTick = setInterval(() => { if (CALL.state === 'active') { const st = $('.call-st', ov) || $('#cpOpen', ov); if (st && !CALL.min) st.textContent = fmtSec((Date.now() - CALL.t0) / 1000); else if (CALL.min) renderCallUI(); } }, 1000);
+  if (!callTick) callTick = setInterval(() => { if (CALL.state === 'active') { const st = CALL.min ? $('#cpOpen', ov) : $('.call-st', ov); if (CALL.min) renderCallUI(); else if (st) st.innerHTML = '<i></i>' + fmtSec((Date.now() - CALL.t0) / 1000); } }, 1000);
+  if (!callRaf) callRaf = requestAnimationFrame(callLevels);
 }
 // the other side swapped a chip: fly it in
 function swapFx(c) {
   VoxEngine.sfx('insert');
   const el = document.createElement('div');
   el.className = 'swap-fx';
-  el.innerHTML = `<div class="sfx-card" style="--c:${c.color}">${c.thumb ? `<img src="${c.thumb}" alt="">` : c.art && ART[c.art] ? `<span class="art">${artSVG(c.art, c.color)}</span>` : ''}</div><div class="sfx-t"><b>${esc((CALL.peer && CALL.peer.name) || '相手')}</b> が「${esc(c.name)}」を差し込んだ！</div>`;
+  el.innerHTML = `<div class="sfx-card" style="--c:${c.color}">${chipArt(c)}</div><div class="sfx-t"><b>${esc((CALL.peer && CALL.peer.name) || '相手')}</b> が「${esc(c.name)}」を差し込んだ！</div>`;
   document.body.append(el);
   setTimeout(() => el.remove(), 2600);
 }
