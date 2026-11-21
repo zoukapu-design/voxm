@@ -47,7 +47,13 @@ jobs:
           pip install torch==2.5.1 torchaudio==2.5.1
           grep -viE '^(torch|torchaudio)([=<> ]|$)' requirements.txt > req.txt || true
           cat req.txt
-          pip install -r req.txt || echo "::warning::some requirements failed"
+          pip install huggingface_hub safetensors
+          # one by one so a package that can't build on macOS (fairseq …) doesn't stop the rest
+          while IFS= read -r line; do
+            pkg=$(echo "$line" | sed 's/#.*//' | xargs); [ -z "$pkg" ] && continue
+            case "$pkg" in fairseq*|wandb*) echo "skip $pkg"; continue;; esac
+            pip install "$pkg" >/dev/null 2>&1 && echo "ok   $pkg" || echo "FAIL $pkg"
+          done < req.txt
           python initialization.py --task all
           find ckpts -maxdepth 3 -type f -exec ls -la {} \; | head -40
 
