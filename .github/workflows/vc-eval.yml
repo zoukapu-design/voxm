@@ -69,6 +69,17 @@ jobs:
               || echo "::warning::WavLM-Large not downloaded"
           fi
           ls -la preprocess/ckpts
+          echo "---- where the speaker-verification checkpoint comes from ----"
+          grep -rn "wavlm_large_finetune\|drive.google\|huggingface.co\|hf_hub_download\|repo_id" --include=*.py --include=*.md . | grep -v "^./ckpts" | head -60 || true
+          SV=preprocess/ckpts/wavlm_large_finetune.pth
+          for u in \
+            https://huggingface.co/ASLP-lab/MeanVC2/resolve/main/wavlm_large_finetune.pth \
+            https://huggingface.co/ASLP-lab/MeanVC/resolve/main/wavlm_large_finetune.pth \
+            https://huggingface.co/datasets/ASLP-lab/MeanVC2/resolve/main/wavlm_large_finetune.pth; do
+            [ -s "$SV" ] && break
+            curl -sL --fail -o "$SV" "$u" && echo "got SV from $u" || rm -f "$SV"
+          done
+          ls -la preprocess/ckpts
           find ckpts -maxdepth 3 -type f -exec ls -la {} \; | head -40
 
       - name: Convert Japanese source to each target voice, and time it
