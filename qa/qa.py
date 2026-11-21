@@ -70,9 +70,9 @@ async def main():
             print('swapped to:', await p.evaluate('JSON.stringify(VOXM_DEBUG.S.slots)'))
             await p.screenshot(path=f'{OUT}/flow6_swapped.png')
             # FX
-            await p.click('.tab[data-tab=fx]'); await p.wait_for_timeout(300)
-            await p.click('[data-fx=echo]'); await p.click('[data-fx=robot]'); await p.wait_for_timeout(300)
-            await p.screenshot(path=f'{OUT}/fx.png', full_page=False)
+            await p.click('.tab[data-tab=map]'); await p.wait_for_timeout(900)
+            await p.click('.vnode'); await p.wait_for_timeout(400)
+            await p.screenshot(path=f'{OUT}/map.png', full_page=False)
             print('params:', await p.evaluate('JSON.stringify(VOXM_DEBUG.combinedParams())'))
             # memory chips / cases
             await p.click('.tab[data-tab=memory]'); await p.wait_for_timeout(400); await p.screenshot(path=f'{OUT}/memory_chips.png')

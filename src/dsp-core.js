@@ -327,6 +327,7 @@ class VoxCore {
     this.srcMark = 0; this.nextOut = 0;
     this.ringPhase = 0; this.vibPhase = 0; this.tremPhase = 0;
     this.crushHold = 0; this.crushVal = 0;
+    this.gEnv = 0; this.bEnv = 0; this.bG = 1;
     this.inE = 1e-6; this.outE = 1e-6; this.agc = 1; // loudness match for the processed path
     this.agcA = 1 / (0.25 * sr);
     this.mix = 0; // 0 = direct, 1 = processed
@@ -361,7 +362,7 @@ class VoxCore {
     p.trem = num(p.trem, 0, 1, 0); p.tremHz = num(p.tremHz, 0.5, 30, 6); p.crush = num(p.crush, 0, 1, 0);
     p.water = num(p.water, 0, 1, 0); p.inst = Math.round(num(p.inst, 0, 7, 0)); p.instMix = num(p.instMix, 0, 1, 0.85); p.instOct = Math.round(num(p.instOct, -2, 2, 0));
     p.perc = num(p.perc, 0, 1, 0); p.blip = num(p.blip, 0, 1, 0); p.harm = num(p.harm, 0, 1, 0); p.harmType = Math.round(num(p.harmType, 0, 3, 0));
-    p.voc = num(p.voc, 0, 1, 0); p.comb = num(p.comb, 0, 1, 0); p.combMs = num(p.combMs, 0.5, 20, 5); p.wah = num(p.wah, 0, 1, 0); p.glitch = num(p.glitch, 0, 1, 0);
+    p.voc = num(p.voc, 0, 1, 0); p.comb = num(p.comb, 0, 1, 0); p.combMs = num(p.combMs, 0.5, 20, 5); p.wah = num(p.wah, 0, 1, 0); p.glitch = num(p.glitch, 0, 1, 0); p.boost = num(p.boost, 0, 1, 0);
     p.fun = p.water > 0 || p.inst > 0 || p.perc > 0 || p.blip > 0 || p.voc > 0 || p.comb > 0 || p.wah > 0 || p.glitch > 0;
     p.active = Math.abs(p.pitch - 1) > 0.004 || Math.abs(p.formant - 1) > 0.004 || p.robotHz > 0 || p.vib > 0.01 || p.tune > 0.01 || p.harm > 0.01;
   }
@@ -487,6 +488,16 @@ class VoxCore {
         // sample-and-hold + bit reduction (8-bit game sound)
         if (--this.crushHold <= 0) { this.crushHold = holdN; this.crushVal = Math.round(v * q) / q; }
         v = v * (1 - crushMix) + this.crushVal * crushMix;
+      }
+      if (p.boost > 0) {
+        // whisper boost: raise quiet speech to a steady loud level (gated so room noise is not pumped up)
+        const ax = x < 0 ? -x : x, av = v < 0 ? -v : v;
+        this.gEnv += (ax - this.gEnv) * (ax > this.gEnv ? 0.004 : 0.0003);
+        this.bEnv += (av - this.bEnv) * (av > this.bEnv ? 0.003 : 0.00008);
+        let g = this.gEnv > 0.0016 ? Math.min(1 + p.boost * 31, 0.2 / (this.bEnv + 1e-5)) : 1;
+        if (g < 1) g = 1;
+        this.bG += (g - this.bG) * (g < this.bG ? 0.003 : 0.00025);
+        v *= this.bG;
       }
       // zero-latency soft limiter (replaces a look-ahead compressor)
       const a = v < 0 ? -v : v;

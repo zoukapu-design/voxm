@@ -23,13 +23,13 @@ function stageHTML() {
     <div class="deck-floor"></div>
     <div class="deck-scene"><div class="deck-obj deck" id="deck"></div></div>
     <div class="slot-layer" id="slotLayer"><canvas class="spec" id="specCv" width="780" height="360"></canvas></div>
-    ${[0, 1, 2].map((i) => `<button class="hit hit-cell" data-cell="${i}" aria-label="メモリ ${i + 1} を取り出す"></button>`).join('')}
+    ${[0, 1, 2, 3].map((i) => `<button class="hit hit-cell" data-cell="${i}" aria-label="メモリ ${i + 1} を取り出す"></button>`).join('')}
     <div class="hit" id="hitVol" role="slider" aria-label="出力音量（左右にドラッグ）" tabindex="0"></div>
     <div class="ctrl">
       <button class="cbtn main" id="kConv"><i class="dot"></i><b id="kConvTxt">変換 ON</b></button>
       <button class="cbtn" id="kMon" aria-label="モニター">${ICON.headphones}<span>MON</span></button>
       <button class="cbtn rec" id="kRec" aria-label="録音">${ICON.rec}<span>REC</span></button>
-      <button class="cbtn" id="kFx" aria-label="FX工房">${ICON.sliders}<span>FX</span></button>
+      <button class="cbtn" id="kFx" aria-label="音量と音程">${ICON.sliders}<span>TUNE</span></button>
     </div>
   </div></div>`;
 }
@@ -71,7 +71,7 @@ function buildDeck() {
   top.style.transformStyle = 'preserve-3d';
   const ph = DK.panelH;
   const panel = dEl('face dk-panel', `inset:auto;left:40px;top:${DK.panelY - ph}px;width:${w - 80}px;height:${ph}px`, top);
-  panel.innerHTML = `<div class="dp-cells">${[0, 1, 2].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div></div>`).join('')}</div>`;
+  panel.innerHTML = `<div class="dp-cells">${[0, 1, 2, 3].map((i) => `<div class="dp-cell" data-cell="${i}"><div class="dp-ic"></div></div>`).join('')}</div>`;
 }
 
 RENDER.home = () => {
@@ -281,7 +281,7 @@ function bindHome() {
     toast(S.monitor ? 'モニターON：変換後の声を自分で聴けます（イヤホン推奨）' : 'モニターOFF：録音・出力のみ');
   });
   $('#kRec').addEventListener('click', toggleRec);
-  $('#kFx').addEventListener('click', () => go('fx'));
+  $('#kFx').addEventListener('click', openTune);
   $('#casePill').addEventListener('click', openCasePicker);
   bindSlotDrag();
   // volume: drag along the light slider printed on the plate
@@ -371,7 +371,7 @@ async function insertCurrent() {
   const cell = S.slots.indexOf(null);
   const card = W.cards[ci];
   if (cell < 0) {
-    toast('メモリは3つまで。パネルのアイコンをタップして1つ取り出してね');
+    toast('メモリは4つまで。デッキのアイコンをタップして1つ取り出してね');
     card.animate([{ transform: card.style.transform }, { transform: card.style.transform + ' translateY(-14px)' }, { transform: card.style.transform }], { duration: 320, easing: 'cubic-bezier(.3,1.6,.5,1)' });
     $('#deck').animate([{ filter: 'none' }, { filter: 'drop-shadow(0 0 10px #ff6b81)' }, { filter: 'none' }], 500);
     return;
@@ -527,6 +527,24 @@ function drawGuide() {
   $('#guideDot').setAttribute('cx', x); $('#guideDot').setAttribute('cy', y1);
 }
 
+/* ---- TUNE: output volume, fine pitch, monitor (was the FX tab's master section) ---- */
+function openTune() {
+  openSheet('音量と音程', `
+    <div class="panel">
+      ${sliderHTML('vol', '出力音量', 0, 1.5, 0.01, S.volume, (v) => Math.round((v / 1.5) * 100) + '%')}
+      ${sliderHTML('fine', '全体のピッチ微調整', -6, 6, 0.1, S.fineTune, (v) => signed(v, 1) + ' 半音')}
+      <div class="list-item" style="border:0;padding:2px 0 8px"><div class="grow"><b style="font-size:13px">小声ブースト</b><div class="small muted">ささやき声でも大きな変換音声にします（周りの雑音は持ち上げません）</div></div><button class="switch ${S.boost ? 'on' : ''}" id="tuBoost" aria-label="小声ブースト"></button></div>
+      <div class="list-item" style="border:0;padding:2px 0 0"><div class="grow"><b style="font-size:13px">モニター（自分で聴く）</b><div class="small muted">オフにすると録音・出力先にだけ流れます</div></div><button class="switch ${S.monitor ? 'on' : ''}" id="tuMon" aria-label="モニター"></button></div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" id="tuReset">ピッチを0に戻す</button></div>`, (b) => {
+    bindSlider(b, 'vol', (v) => Math.round((v / 1.5) * 100) + '%', (v) => { S.volume = v; VoxEngine.setVolume(v); saveSettings(); });
+    bindSlider(b, 'fine', (v) => signed(v, 1) + ' 半音', (v) => { S.fineTune = v; applyParams(); saveSettings(); updateDriver(); });
+    $('#tuBoost', b).onclick = (e) => { S.boost = !S.boost; applyParams(); e.currentTarget.classList.toggle('on', S.boost); saveSettings(); toast(S.boost ? '小声ブースト ON：ささやいても大きな声に' : '小声ブースト OFF'); };
+    $('#tuMon', b).onclick = (e) => { S.monitor = !S.monitor; VoxEngine.setMonitor(S.monitor); e.currentTarget.classList.toggle('on', S.monitor); saveSettings(); updateDriver(); };
+    $('#tuReset', b).onclick = () => { S.fineTune = 0; applyParams(); saveSettings(); updateDriver(); const sl = $('[data-sl="fine"]', b); sl.value = 0; sl.dispatchEvent(new Event('input')); };
+  });
+}
+
 /* ---- conversion / recording ---- */
 let headphoneTipShown = false;
 async function toggleConvert() {
@@ -601,8 +619,8 @@ function updateDriver() {
   $('#kConvTxt').textContent = live ? '変換中' : st.state === 'starting' ? '起動中…' : '変換 ON';
   $('#kMon').classList.toggle('on', S.monitor);
   $('#kRec').classList.toggle('on', rec);
-  $('#kFx').classList.toggle('on', S.fx.length > 0);
-  const ic = { mon: S.monitor, rec, fx: S.fx.length > 0, out: !!st.sinkId };
+  $('#kFx').classList.toggle('on', Math.abs(S.fineTune) > 0.05);
+  const ic = { mon: S.monitor, rec, fx: Math.abs(S.fineTune) > 0.05, out: !!st.sinkId };
   $$('#deck [data-ic]').forEach((s) => s.classList.toggle('on', !!ic[s.dataset.ic]));
   // panel cells: one icon per absorbed chip
   S.slots.forEach((id, i) => {

@@ -30,7 +30,7 @@ const BUILTIN_CHIPS = [
   { id: 'c_mega', name: 'メガホン', kind: 'fx', tag: 'LOUD', art: 'megaphone', color: '#ff9f43', profile: { lowcut: 600, highcut: 4200, drive: 0.55, presence: 6, echo: 0.15 } },
   { id: 'c_cave', name: '洞くつ', kind: 'fx', tag: 'ECHO', art: 'cave', color: '#5ca8ff', profile: { echo: 0.65, reverb: 0.55, lowcut: 120 } },
   { id: 'c_water', name: '水の中', kind: 'fx', tag: 'UNDERWATER', art: 'bubble', color: '#4fc3ff', profile: { water: 0.9, vib: 0.35, vibHz: 1.2, chorus: 0.3 } },
-  { id: 'c_piano', name: 'ピアノ', kind: 'music', tag: 'PIANO', art: 'piano', color: '#e9e6ff', profile: { inst: 1, instMix: 0.75, reverb: 0.25 } },
+  { id: 'c_piano', name: 'ピアノ', kind: 'music', tag: 'PIANO', art: 'piano', color: '#9fb0ff', profile: { inst: 1, instMix: 0.75, reverb: 0.25 } },
   { id: 'c_guitar', name: 'ギター', kind: 'music', tag: 'GUITAR', art: 'guitar', color: '#ffb35c', profile: { inst: 2, instMix: 0.75, reverb: 0.15 } },
   { id: 'c_musicbox', name: 'オルゴール', kind: 'music', tag: 'MUSIC BOX', art: 'musicbox', color: '#ffc4ec', profile: { inst: 3, instMix: 0.7, reverb: 0.35 } },
   { id: 'c_organ', name: 'オルガン', kind: 'music', tag: 'ORGAN', art: 'organ', color: '#c9a0ff', profile: { inst: 4, instMix: 0.8, reverb: 0.45 } },
@@ -45,6 +45,12 @@ const BUILTIN_CHIPS = [
   { id: 'c_can', name: '缶の中', kind: 'fx', tag: 'TIN CAN', art: 'can', color: '#c0c8d8', profile: { comb: 0.85, combMs: 3.2, lowcut: 250 } },
   { id: 'c_helmet', name: '宇宙ヘルメット', kind: 'fx', tag: 'SPACE SUIT', art: 'helmet', color: '#9ad7ff', profile: { comb: 0.6, combMs: 9, highcut: 5000, lowcut: 200, drive: 0.1 } },
   { id: 'c_wah', name: 'ワウワウ', kind: 'fx', tag: 'WAH', art: 'wah', color: '#ff8ad8', profile: { wah: 0.9 } },
+  { id: 'c_yamabiko', name: 'やまびこ', kind: 'fx', tag: 'ECHO', art: 'yamabiko', color: '#7fdcff', profile: { echo: 0.6 } },
+  { id: 'c_hall', name: '大ホール', kind: 'fx', tag: 'HALL', art: 'hall', color: '#a487ff', profile: { reverb: 0.65 } },
+  { id: 'c_double', name: 'ダブル', kind: 'fx', tag: 'DOUBLER', art: 'twins', color: '#ff7ab6', profile: { chorus: 0.75 } },
+  { id: 'c_drive', name: 'ガサガサ', kind: 'fx', tag: 'DRIVE', art: 'flame', color: '#ff6b81', profile: { drive: 0.55, bass: 3 } },
+  { id: 'c_wobble', name: 'ゆらゆら', kind: 'fx', tag: 'VIBRATO', art: 'wobble', color: '#6bffd8', profile: { vib: 0.9, vibHz: 6 } },
+  { id: 'c_trem', name: 'ふるえ声', kind: 'fx', tag: 'TREMOLO', art: 'pulse', color: '#ffe066', profile: { trem: 0.65, tremHz: 8 } },
   { id: 'c_glitch', name: 'グリッチ', kind: 'fx', tag: 'GLITCH', art: 'glitch', color: '#ff4fd1', profile: { glitch: 0.8, crush: 0.15, ring: 0.1, ringHz: 80 } },
 ];
 // built-ins that shipped before the newest additions (used to slot new chips into existing saved cases once)
@@ -53,7 +59,7 @@ const BUILTIN_CASES_V1 = ['k_friends', 'k_chara', 'k_fx'];
 const BUILTIN_CASES = [
   { id: 'k_friends', name: 'フレンズ', color: '#ffb86b', chipIds: ['c_friendA', 'c_friendB'] },
   { id: 'k_chara', name: 'キャラクター', color: '#a487ff', chipIds: ['c_android', 'c_nebula', 'c_phantom', 'c_monster', 'c_angel', 'c_hamster', 'c_giant', 'c_dragon', 'c_ufo', 'c_elder', 'c_kid'] },
-  { id: 'k_fx', name: 'エフェクト', color: '#ff7ab6', chipIds: ['c_helium', 'c_radio', 'c_8bit', 'c_kero', 'c_phone', 'c_mega', 'c_cave'] },
+  { id: 'k_fx', name: 'エフェクト', color: '#ff7ab6', chipIds: ['c_helium', 'c_radio', 'c_8bit', 'c_kero', 'c_phone', 'c_mega', 'c_cave', 'c_yamabiko', 'c_hall', 'c_double', 'c_drive', 'c_wobble', 'c_trem'] },
   { id: 'k_music', name: '楽器ボイス', color: '#5cf2ff', chipIds: ['c_piano', 'c_guitar', 'c_musicbox', 'c_organ', 'c_synth', 'c_theremin', 'c_bass', 'c_vocoder', 'c_beatbox'] },
   { id: 'k_weird', name: 'へんな声', color: '#ff4fd1', chipIds: ['c_water', 'c_gamese', 'c_can', 'c_helmet', 'c_wah', 'c_glitch', 'c_choir', 'c_maou'] },
 ];
@@ -92,7 +98,7 @@ const SAMPLE_SCRIPT = 'こんにちは。今日はいい天気ですね。あい
 const S = {
   tab: 'home',
   chips: [], cases: [],
-  selectedId: 'c_friendA', slots: [null, null, null], // 3 bays on the deck: [left, centre, right]
+  selectedId: 'c_friendA', slots: [null, null, null, null], // up to 4 chips absorbed into the deck
   homeCase: 'all',
   fx: [], // [{id, amt}]
   fineTune: 0,
@@ -134,10 +140,11 @@ async function loadAll() {
   }
   S.seenBuiltins = BUILTIN_CHIPS.map((c) => c.id);
   if (!kv || !kv.seenBuiltins || !kv.seenCases) saveSettings();
-  if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) if (k in kv) S[k] = kv[k];
+  if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) if (k in kv) S[k] = kv[k];
   if (kv && !kv.slots && kv.insertedId) S.slots = [null, kv.insertedId, null]; // single-slot era
   if (!chipById(S.selectedId)) S.selectedId = S.chips[0]?.id || null;
-  S.slots = [0, 1, 2].map((i) => (Array.isArray(S.slots) && chipById(S.slots[i]) ? S.slots[i] : null));
+  S.slots = [0, 1, 2, 3].map((i) => (Array.isArray(S.slots) && chipById(S.slots[i]) ? S.slots[i] : null));
+  S.fx = []; // the FX rack was folded into chips (FX工房 → chips + 4 slots)
   if (S.homeCase !== 'all' && !S.cases.find((c) => c.id === S.homeCase)) S.homeCase = 'all';
   S.recordings = (recs || []).sort((a, b) => b.createdAt - a.createdAt);
 }
@@ -146,7 +153,7 @@ function saveSettings() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     const kv = {};
-    for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) kv[k] = S[k];
+    for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) kv[k] = S[k];
     kv.removedBuiltins = S.removedBuiltins || [];
     kv.seenBuiltins = S.seenBuiltins || BUILTIN_CHIPS.map((c) => c.id);
     kv.seenCases = S.seenCases || BUILTIN_CASES.map((c) => c.id);
@@ -196,6 +203,7 @@ function combinedParams() {
   for (const layer of S.fx) { const fx = FX_LIB.find((f) => f.id === layer.id); if (fx) layerParams(p, fx.p, layer.amt); }
   p.pitch = clamp(p.pitch + S.fineTune, -12, 14);
   p.formant = clamp(p.formant, -5.5, 7);
+  p.boost = S.boost ? 1 : 0;
   return p;
 }
 function applyParams() { VoxEngine.setParams(combinedParams()); }

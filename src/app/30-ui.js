@@ -3,7 +3,7 @@ const TABS = [
   { id: 'home', label: '変換', icon: 'wave' },
   { id: 'memory', label: 'メモリ', icon: 'chips' },
   { id: 'create', label: '作成', icon: 'plus' },
-  { id: 'fx', label: 'FX工房', icon: 'sliders' },
+  { id: 'map', label: 'マップ', icon: 'graph' },
   { id: 'output', label: '出力', icon: 'link' },
 ];
 const RENDER = {}; // tab id -> render fn

@@ -145,6 +145,15 @@ for (const [name, inst, expect] of [['organ', 4, 116.5], ['synth', 5, 116.5], ['
   const c = new VoxCore(sr); c.set({ pitch: 1, formant: 1, inst: 1, perc: 1, voc: 1, water: 1, wah: 1 });
   check('playful effects add no delay', c.latencySamples(), 0, 0);
 }
+// whisper boost: a quiet voice (-30 dB) comes out loud; silence stays silent
+{
+  const quiet = synthVoice(sr, 2, 140, 1.0, 11).map((v) => v * 0.03);
+  const st = stats(runCore(quiet, sr, { pitch: 1.2, formant: 1, boost: 1 }).out.subarray(sr));
+  const st0 = stats(runCore(quiet, sr, { pitch: 1.2, formant: 1 }).out.subarray(sr));
+  check('whisper boost raises a quiet voice ≥ 12 dB', 20 * Math.log10(st.rms / st0.rms) >= 12 ? 1 : 0, 1, 0);
+  const sil = stats(runCore(new Float32Array(sr * 2).map(() => (Math.random() - 0.5) * 0.0006), sr, { pitch: 1, formant: 1, boost: 1 }).out);
+  check('whisper boost leaves room noise alone', sil.rms < 0.002 ? 1 : 0, 1, 0);
+}
 // CPU budget: seconds of audio processed per second
 {
   const t = Date.now();

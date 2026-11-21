@@ -33,6 +33,7 @@ const ICON = {
   mic: I('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
   headphones: I('<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>'),
   rec: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="currentColor"/></svg>',
+  graph: I('<circle cx="6" cy="7" r="2.6"/><circle cx="18" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/><path d="M8.3 8.4l2.6 7.2M16.8 8.3l-3.6 7.4M8.6 6.8l6.8-.6"/>'),
   play: '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>',
   share: I('<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>'),
@@ -71,6 +72,12 @@ const ICON = {
 
 /* ===== emblem art for character / FX chips (original line art, 100×100) ===== */
 const ART = {
+  yamabiko: `<path d="M8 80l22-36 12 18 14-26 36 44z" class="s"/><path d="M60 22c5 3 5 11 0 14M68 16c9 6 9 20 0 26M76 10c13 9 13 29 0 38" class="s t"/>`,
+  hall: `<path d="M14 82V46l36-26 36 26v36" class="s"/><path d="M28 82V58a8 8 0 0 1 16 0v24M56 82V58a8 8 0 0 1 16 0v24" class="s t"/><path d="M8 82h84" class="s"/><circle cx="50" cy="40" r="4" class="f"/>`,
+  twins: `<circle cx="38" cy="42" r="16" class="s"/><circle cx="62" cy="42" r="16" class="s t"/><path d="M14 84c2-16 12-24 24-24s22 8 24 24M38 84c2-16 12-24 24-24s22 8 24 24" class="s t"/>`,
+  flame: `<path d="M50 14c6 16 24 24 24 44a24 24 0 0 1-48 0c0-10 6-18 12-22 0 8 4 12 8 12-2-14 0-24 4-34z" class="s"/><path d="M50 58c4 5 8 8 8 14a8 8 0 0 1-16 0c0-6 4-9 8-14z" class="f"/>`,
+  wobble: `<path d="M8 50c7-16 14-16 21 0s14 16 21 0 14-16 21 0 14 16 21 0" class="s"/><path d="M8 72c7-8 14-8 21 0s14 8 21 0 14-8 21 0 14 8 21 0" class="s t"/><path d="M8 28c7-8 14-8 21 0s14 8 21 0 14-8 21 0 14 8 21 0" class="s t"/>`,
+  pulse: `<path d="M14 50h12l6-18 10 40 10-52 10 46 6-16h18" class="s"/><path d="M14 80h72" class="s t"/>`,
   bubble: `<circle cx="40" cy="58" r="16" class="s"/><circle cx="65" cy="36" r="10" class="s"/><circle cx="58" cy="70" r="6" class="s t"/><circle cx="74" cy="16" r="5" class="s t"/><path d="M33 53a9 9 0 0 1 8-6M61 32a5 5 0 0 1 4-3" class="s t"/><path d="M10 88c8-5 14-5 22 0s14 5 22 0 14-5 22 0 10-3 14-2" class="s t"/>`,
   piano: `<rect x="14" y="26" width="72" height="50" rx="5" class="s"/><path d="M26 26v50M38 26v50M50 26v50M62 26v50M74 26v50" class="s t"/><rect x="22.5" y="26" width="7" height="28" class="f"/><rect x="34.5" y="26" width="7" height="28" class="f"/><rect x="58.5" y="26" width="7" height="28" class="f"/><rect x="70.5" y="26" width="7" height="28" class="f"/>`,
   guitar: `<path d="M39 50c-13-2-24 6-24 18 0 11 9 18 19 18 12 0 18-9 18-19 6-1 10-5 10-11 0-7-8-11-14-8z" class="s"/><path d="M48 51L79 20" class="s"/><path d="M75 16l9 9" class="s"/><circle cx="35" cy="67" r="5.5" class="f"/><path d="M26 75l9 9" class="s t"/>`,
