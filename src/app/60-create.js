@@ -216,11 +216,16 @@ function recorderBlock(box, o) {
       <button class="rec-big ${on ? 'on stop' : ''}" data-r aria-label="${on ? '録音を止める' : '録音する'}">${on ? '<i></i>' : ICON.mic}</button>
       <div class="small ${on ? '' : 'muted'}" data-rt>${on ? '録音中 0:00 / 最大' + fmtSec(o.max) : o.done ? '✓ ' + o.doneLabel : 'タップして読み上げ（' + o.min + '秒以上）'}</div>
       <div class="meter"><i data-rl></i></div>
-      ${on ? '' : `<label class="btn ghost sm" style="margin-top:6px">${ICON.upload} ${o.fileLabel || '音声ファイルから'}<input type="file" accept="audio/*,video/*" data-f hidden></label>`}`}
+      ${on ? '' : o.onFile && VoxNative.isNative() ? `<div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px">
+          <button class="btn ghost sm" data-nv>${ICON.upload} 動画から声を抽出</button>
+          <label class="btn ghost sm">${ICON.upload} 音声ファイル<input type="file" accept="audio/*,video/*" data-f hidden></label></div>`
+        : `<label class="btn ghost sm" style="margin-top:6px">${ICON.upload} ${o.fileLabel || '音声ファイルから'}<input type="file" accept="audio/*,video/*" data-f hidden></label>`}`}
     </div>`;
     const r = box.querySelector('[data-r]');
     if (r) r.onclick = () => (rec.state === 'rec' ? stop() : start());
     const f = box.querySelector('[data-f]');
+    const nv = box.querySelector('[data-nv]');
+    if (nv) nv.onclick = () => o.onFile('native');
     if (f) f.onchange = (e) => { const file = e.target.files && e.target.files[0]; e.target.value = ''; if (file) (o.onFile || o.onClip)(file); };
   };
   let stream = null, mr = null, chunks = [], an = null, raf = 0, actx = null;

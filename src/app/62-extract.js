@@ -35,7 +35,20 @@ async function decodeViaElement(file, onProg) {
   return { samples: out, sampleRate: sr };
 }
 
+// iOS app: pick a video from Photos natively; the soundtrack comes back as 16 kHz mono PCM
+async function nativeVideoAudio() {
+  const r = await VoxNative.call('pickVideo', {}, 15 * 60 * 1000);
+  if (!r) throw new Error('このビルドは未対応です（最新のTestFlightに更新してください）');
+  if (r.cancelled) return null;
+  if (!r.ok) throw new Error(r.error || '動画を読み込めませんでした');
+  const bin = atob(r.pcm16), n = bin.length >> 1, out = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v >= 32768) v -= 65536; out[i] = v / 32768; }
+  VLOG.add('APP', 'native video audio', r.seconds + 's of', r.total + 's');
+  return { samples: out, sampleRate: r.sampleRate || 16000 };
+}
+
 async function decodeAny(file, onProg) {
+  if (file === 'native') return nativeVideoAudio();
   const big = file.size > 60 * 1024 * 1024;
   if (!big) {
     try {
@@ -54,9 +67,15 @@ function openExtractor(file, who) {
       const msg = (t) => { const e = $('#exMsg', b); if (e) e.textContent = t; };
       const bar = (v) => { const e = $('#exBar', b); if (e) e.style.width = Math.round(v * 100) + '%'; };
       let dec;
+      if (file === 'native') msg('動画を選んでください…（選んだあと音声を取り出します）');
       try { dec = await decodeAny(file, (v) => { msg('音声を取り出し中… ' + Math.round(v * 100) + '%'); bar(v * 0.5); }); }
-      catch (e) { VLOG.add('WARN', 'extract decode', e); msg('このファイルは読み込めませんでした。画面収録やボイスメモで音声にしてから試してください。'); return; }
-      VLOG.add('APP', 'extract decoded', file.type, file.size, dec.samples.length / dec.sampleRate + 's', dec.sampleRate);
+      catch (e) {
+        VLOG.add('WARN', 'extract decode', e);
+        msg('このファイルは読み込めませんでした（' + ((e && e.message) || e) + '）。' + (VoxNative.isNative() && file !== 'native' ? '「動画から」ボタンで写真アプリから選ぶと読み込めます。' : '画面収録やボイスメモで音声にしてから試してください。'));
+        return;
+      }
+      if (!dec) { close(); return; }
+      VLOG.add('APP', 'extract decoded', file === 'native' ? 'native' : file.type + ' ' + file.size, dec.samples.length / dec.sampleRate + 's', dec.sampleRate);
       msg('声を探しています…');
       const seg = await VoxAnalysis.segmentSpeakers(dec.samples, dec.sampleRate, (v) => bar(0.5 + v * 0.5));
       if (!seg.candidates.length) { msg('はっきりした話し声が見つかりませんでした。BGMが小さく、声がよく聞こえる部分のファイルで試してください。'); return; }

@@ -23,10 +23,7 @@ sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2";/TARGETED_DEVICE_FAMILY = 1;/g' ios/
 APPDEL=ios/App/App/AppDelegate.swift
 SB=ios/App/App/Base.lproj/Main.storyboard
 if ! grep -q VoxAudioPlugin "$APPDEL"; then
-  grep -q "^import AVFoundation" "$APPDEL" || sed -i '' 's/^import Capacitor$/import Capacitor\
-import AVFoundation/' "$APPDEL"
-  grep -q "^import ReplayKit" "$APPDEL" || sed -i '' 's/^import AVFoundation$/import AVFoundation\
-import ReplayKit/' "$APPDEL"
+  perl -0pi -e 's/^import Capacitor$/import Capacitor\nimport AVFoundation\nimport ReplayKit\nimport PhotosUI\nimport UniformTypeIdentifiers/m' "$APPDEL"
   cat ci/native/VoxAudio.swift >> "$APPDEL"
 fi
 sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="VoxBridgeViewController" customModule="App" customModuleProvider="target"/' "$SB"
