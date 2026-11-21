@@ -72,6 +72,9 @@ jobs:
           echo "---- where the speaker-verification checkpoint comes from ----"
           grep -rn "wavlm_large_finetune\|drive.google\|huggingface.co\|hf_hub_download\|repo_id" --include=*.py --include=*.md . | grep -v "^./ckpts" | head -60 || true
           SV=preprocess/ckpts/wavlm_large_finetune.pth
+          pip install gdown >/dev/null 2>&1 || true
+          gdown 1-aE1NfzpRCLxA4GUxX9ITI3F9LlbtEGP -O "$SV" || echo "gdown failed"
+          [ -s "$SV" ] && echo "got SV via Google Drive ($(stat -f%z "$SV") bytes)"
           for u in \
             https://huggingface.co/ASLP-lab/MeanVC2/resolve/main/wavlm_large_finetune.pth \
             https://huggingface.co/ASLP-lab/MeanVC/resolve/main/wavlm_large_finetune.pth \
