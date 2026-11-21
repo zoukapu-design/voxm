@@ -1,0 +1,84 @@
+name: AI voice conversion eval (MeanVC2)
+# Feasibility check for on-device AI voice conversion:
+# runs the open MeanVC2 streaming zero-shot model on an Apple Silicon runner with Japanese test voices
+# made by macOS text-to-speech (no real people's voices), and measures CPU speed.
+on:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Test voices (macOS text-to-speech)
+        run: |
+          mkdir -p eval
+          say -v '?' | grep -Ei 'ja_JP|en_US' | head -40 || true
+          JA=$(say -v '?' | awk '/ja_JP/{print $1}' | head -4 | tr '\n' ' ')
+          echo "Japanese voices: $JA"
+          set -- $JA
+          TXT1="こんにちは。今日はいい天気ですね。これは声の変換のテストです。うまく聞こえていますか。"
+          TXT2="昨日は友達と駅前のカフェに行って、新しいアプリの話をたくさんしました。また一緒に遊ぼうね。"
+          if [ -n "$1" ] && [ -n "$2" ]; then
+            say -v "$1" -o eval/src_a.aiff "$TXT1"; say -v "$2" -o eval/ref_b.aiff "$TXT2"
+            say -v "$2" -o eval/src_b.aiff "$TXT1"; say -v "$1" -o eval/ref_a.aiff "$TXT2"
+            echo "VOICES=$1 $2" >> $GITHUB_ENV
+          else
+            say -v Samantha -o eval/src_a.aiff "Hello, this is a voice conversion test. Can you hear me well?"
+            say -v Daniel -o eval/ref_b.aiff "Yesterday I went to a cafe with my friend and talked about our new app."
+            say -v Daniel -o eval/src_b.aiff "Hello, this is a voice conversion test. Can you hear me well?"
+            say -v Samantha -o eval/ref_a.aiff "Yesterday I went to a cafe with my friend and talked about our new app."
+            echo "VOICES=Samantha Daniel (no Japanese voice installed)" >> $GITHUB_ENV
+          fi
+          for f in eval/*.aiff; do afconvert -f WAVE -d LEI16@16000 -c 1 "$f" "${f%.aiff}.wav"; done
+          ls -la eval
+
+      - name: Install MeanVC2
+        run: |
+          git clone --depth 1 https://github.com/ASLP-lab/MeanVC2.git mvc
+          cd mvc
+          python -m pip install --upgrade pip
+          pip install torch==2.5.1 torchaudio==2.5.1
+          grep -viE '^(torch|torchaudio)([=<> ]|$)' requirements.txt > req.txt || true
+          cat req.txt
+          pip install -r req.txt || echo "::warning::some requirements failed"
+          python initialization.py --task all
+          find ckpts -maxdepth 3 -type f -exec ls -la {} \; | head -40
+
+      - name: Convert (A → B, B → A) and time it
+        run: |
+          cd mvc
+          run() {
+            python - "$@" <<'PY'
+          import sys, time, subprocess, wave
+          src, tgt, out, model = sys.argv[1:5]
+          cfg = {'120': ('meanvc2_120ms_40ms', 'config_120ms_40ms', 12), '40': ('meanvc2_40ms_40ms', 'config_40ms_40ms', 4)}[model]
+          t = time.time()
+          r = subprocess.run([sys.executable, 'src/infer/infer_e2e.py', '--source-wav', src, '--target-wav', tgt,
+              '--ckpt-path', f'ckpts/pretrained_models/{cfg[0]}.safetensors', '--model-config', f'src/config/{cfg[1]}.json',
+              '--vocoder-ckpt-path', 'ckpts/vocos/vocos.pt', '--chunk-size', str(cfg[2]), '--steps', '3', '--output-wav', out],
+              capture_output=True, text=True, env={**__import__('os').environ, 'OMP_NUM_THREADS': '1'})
+          dt = time.time() - t
+          print(r.stdout[-2000:]); print(r.stderr[-3000:])
+          w = wave.open(src); secs = w.getnframes() / w.getframerate()
+          print(f'RESULT {out}: {secs:.1f}s audio in {dt:.1f}s (incl. model load) -> RTF {dt/secs:.2f} (1 thread)')
+          PY
+          }
+          run ../eval/src_a.wav ../eval/ref_b.wav ../eval/out_a_to_b_120ms.wav 120
+          run ../eval/src_b.wav ../eval/ref_a.wav ../eval/out_b_to_a_120ms.wav 120
+          run ../eval/src_a.wav ../eval/ref_b.wav ../eval/out_a_to_b_40ms.wav 40
+          ls -la ../eval
+          echo "Voices: $VOICES"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vc-eval
+          path: eval/
+          retention-days: 7
