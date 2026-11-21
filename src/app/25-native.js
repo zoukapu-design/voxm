@@ -5,7 +5,7 @@
 const VoxNative = {
   isNative() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } },
   // native calls never block the app: give up after 1.5 s (e.g. plugin missing in an older build)
-  async call(method, args = {}) {
+  async call(method, args = {}, timeout = 1500) {
     if (!this.isNative()) return null;
     const C = window.Capacitor;
     const run = async () => {
@@ -14,7 +14,7 @@ const VoxNative = {
       if (typeof C.nativePromise === 'function') return C.nativePromise('VoxAudio', method, args);
       return null;
     };
-    try { return await Promise.race([run(), new Promise((r) => setTimeout(() => r(null), 1500))]); }
+    try { return await Promise.race([run(), new Promise((r) => setTimeout(() => r(null), timeout))]); }
     catch (e) { console.warn('VoxAudio.' + method, e); return null; }
   },
 };
@@ -27,7 +27,8 @@ const ROUTE = { headphones: null, timer: 0 };
 async function audioOpts() {
   VoxEngine.prime(); // still inside the tap
   let safe = S.safeMode;
-  const r = await VoxNative.call('prepare');
+  const r = await VoxNative.call('prepare', { skip: S.nativeAudio === false });
+  VLOG.add('IOS', 'prepare', S.nativeAudio === false ? '(skip)' : '', r);
   if (r && typeof r.headphones === 'boolean') { ROUTE.headphones = r.headphones; safe = !r.headphones; }
   else if (!S.routeAsked && !navigator.webdriver) safe = await askRoute(); // (skipped in automated tests)
   return { safeMode: safe, noiseSuppression: S.noiseSup };

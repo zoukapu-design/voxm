@@ -422,8 +422,20 @@ registerProcessor('voxm-core', VoxmProcessor);`;
     } catch (e) {}
   }
 
+  // debug snapshot (for the in-app log)
+  function debug() {
+    const c = st.ctx, t = st.stream && st.stream.getAudioTracks()[0];
+    let inR = null, outR = null;
+    try { if (st.inAnalyser) inR = +rmsOf(st.inAnalyser, bufIn).toFixed(5); if (st.outAnalyser) outR = +rmsOf(st.outAnalyser, bufOut).toFixed(5); } catch (e) {}
+    let ts = null; try { ts = t && t.getSettings ? t.getSettings() : null; } catch (e) {}
+    return { state: st.state, error: st.error, ctx: c ? c.state : 'none', sr: c ? c.sampleRate : 0, base: c ? +((c.baseLatency || 0) * 1000).toFixed(1) : 0,
+      outLat: c ? +((c.outputLatency || 0) * 1000).toFixed(1) : 0, core: st.coreKind, coreLat: +((st.coreLatency || 0) * 1000).toFixed(1),
+      inRms: inR, outRms: outR, mic: t ? { ready: t.readyState, muted: t.muted, enabled: t.enabled, label: t.label, ec: ts && ts.echoCancellation, sr: ts && ts.sampleRate } : null,
+      monitor: st.monitor, vol: st.volume, sink: st.sinkId || '', restarts: st.restarts, needsResume: st.needsResume, safe: st.opts && st.opts.safeMode,
+      sinceMsg: st.lastMsg ? Math.round(performance.now() - st.lastMsg) : null, audioSession: (navigator.audioSession && navigator.audioSession.type) || null };
+  }
   return {
-    status: st, DEFAULT, supported, prime, start, stop, reconfigure, setParams, setMonitor, setVolume, latencyMs,
+    status: st, debug, DEFAULT, supported, prime, start, stop, reconfigure, setParams, setMonitor, setVolume, latencyMs,
     canPickOutput, listOutputs, setOutput, startRecording, stopRecording, recording,
     renderOffline, encodeWav, sfx, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
   };

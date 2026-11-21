@@ -4,17 +4,46 @@
 // - tells the web app whether earphones are connected, so it can turn echo cancellation off for them
 //   (on the speaker the phone's echo canceller slowly turns your own voice down while you listen to it)
 @objc(VoxAudioPlugin)
-public class VoxAudioPlugin: CAPPlugin, CAPBridgedPlugin {
+public class VoxAudioPlugin: CAPPlugin, CAPBridgedPlugin, RPPreviewViewControllerDelegate {
     public let identifier = "VoxAudioPlugin"
     public let jsName = "VoxAudio"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "prepare", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "route", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "route", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "diag", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "recStart", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "recStop", returnType: CAPPluginReturnPromise)
     ]
 
+    // ---- small native log, pulled by the web app's debug log (diag) ----
+    static var logs: [(Int, String)] = []
+    static var seq = 0
+    static let t0 = Date()
+    static func nlog(_ msg: String) {
+        let line = String(format: "%8.2f ", Date().timeIntervalSince(VoxAudioPlugin.t0)) + msg
+        DispatchQueue.main.async {
+            VoxAudioPlugin.seq += 1
+            VoxAudioPlugin.logs.append((VoxAudioPlugin.seq, line))
+            if VoxAudioPlugin.logs.count > 500 { VoxAudioPlugin.logs.removeFirst(VoxAudioPlugin.logs.count - 500) }
+        }
+    }
+    static func routeDesc() -> String {
+        let r = AVAudioSession.sharedInstance().currentRoute
+        let o = r.outputs.map { "\($0.portType.rawValue)" }.joined(separator: ",")
+        let i = r.inputs.map { "\($0.portType.rawValue)" }.joined(separator: ",")
+        return "out=[\(o)] in=[\(i)]"
+    }
+    static func sessionDesc() -> String {
+        let s = AVAudioSession.sharedInstance()
+        return "cat=\(s.category.rawValue) mode=\(s.mode.rawValue) opts=\(s.categoryOptions.rawValue) sr=\(s.sampleRate) io=\(String(format: "%.4f", s.ioBufferDuration)) \(routeDesc())"
+    }
+
     override public func load() {
-        NotificationCenter.default.addObserver(self, selector: #selector(routeChanged(_:)),
-                                               name: AVAudioSession.routeChangeNotification, object: nil)
+        let nc = NotificationCenter.default
+        nc.addObserver(self, selector: #selector(routeChanged(_:)), name: AVAudioSession.routeChangeNotification, object: nil)
+        nc.addObserver(self, selector: #selector(interrupted(_:)), name: AVAudioSession.interruptionNotification, object: nil)
+        nc.addObserver(self, selector: #selector(servicesReset(_:)), name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+        VoxAudioPlugin.nlog("plugin loaded " + VoxAudioPlugin.sessionDesc())
     }
 
     static func headphones() -> Bool {
@@ -25,16 +54,24 @@ public class VoxAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     static func keepOnSpeaker() {
         let s = AVAudioSession.sharedInstance()
         if s.currentRoute.outputs.contains(where: { $0.portType == .builtInReceiver }) {
-            try? s.overrideOutputAudioPort(.speaker)
+            do { try s.overrideOutputAudioPort(.speaker); nlog("override → speaker") }
+            catch { nlog("override speaker failed: \(error.localizedDescription)") }
         }
     }
 
     @objc func prepare(_ call: CAPPluginCall) {
+        if call.getBool("skip") ?? false {
+            VoxAudioPlugin.nlog("prepare (skip) " + VoxAudioPlugin.sessionDesc())
+            call.resolve(["headphones": VoxAudioPlugin.headphones()])
+            return
+        }
         let s = AVAudioSession.sharedInstance()
-        try? s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
-        try? s.setPreferredIOBufferDuration(0.005)
-        try? s.setActive(true)
+        do { try s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP]) }
+        catch { VoxAudioPlugin.nlog("setCategory failed: \(error.localizedDescription)") }
+        do { try s.setPreferredIOBufferDuration(0.005) } catch { VoxAudioPlugin.nlog("setIOBuffer failed: \(error.localizedDescription)") }
+        do { try s.setActive(true) } catch { VoxAudioPlugin.nlog("setActive failed: \(error.localizedDescription)") }
         VoxAudioPlugin.keepOnSpeaker()
+        VoxAudioPlugin.nlog("prepare " + VoxAudioPlugin.sessionDesc())
         call.resolve(["headphones": VoxAudioPlugin.headphones()])
     }
 
@@ -44,11 +81,83 @@ public class VoxAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["headphones": VoxAudioPlugin.headphones(), "outputs": outs])
     }
 
+    @objc func diag(_ call: CAPPluginCall) {
+        let after = call.getInt("after") ?? 0
+        let s = AVAudioSession.sharedInstance()
+        let r = s.currentRoute
+        let lines = VoxAudioPlugin.logs.filter { $0.0 > after }.map { $0.1 }
+        call.resolve([
+            "category": s.category.rawValue, "mode": s.mode.rawValue, "options": Int(s.categoryOptions.rawValue),
+            "sampleRate": s.sampleRate, "ioBuffer": s.ioBufferDuration,
+            "outputLatency": s.outputLatency, "inputLatency": s.inputLatency,
+            "outputVolume": Double(s.outputVolume), "otherAudio": s.isOtherAudioPlaying, "inputAvailable": s.isInputAvailable,
+            "outputs": r.outputs.map { "\($0.portType.rawValue):\($0.portName)" },
+            "inputs": r.inputs.map { "\($0.portType.rawValue):\($0.portName)" },
+            "headphones": VoxAudioPlugin.headphones(),
+            "recording": RPScreenRecorder.shared().isRecording,
+            "seq": VoxAudioPlugin.seq, "logs": lines
+        ])
+    }
+
+    // ---- screen recording (ReplayKit). The preview lets the user save the video to Photos or share it. ----
+    @objc func recStart(_ call: CAPPluginCall) {
+        let mic = call.getBool("mic") ?? false
+        DispatchQueue.main.async {
+            let rec = RPScreenRecorder.shared()
+            guard rec.isAvailable else { call.resolve(["ok": false, "error": "この端末では画面録画を使えません"]); return }
+            rec.isMicrophoneEnabled = mic
+            rec.startRecording { err in
+                if let err = err {
+                    VoxAudioPlugin.nlog("recStart error: \(err.localizedDescription)")
+                    call.resolve(["ok": false, "error": err.localizedDescription])
+                } else {
+                    VoxAudioPlugin.nlog("recStart ok " + VoxAudioPlugin.sessionDesc())
+                    call.resolve(["ok": true])
+                }
+            }
+        }
+    }
+
+    @objc func recStop(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            RPScreenRecorder.shared().stopRecording { preview, err in
+                DispatchQueue.main.async {
+                    if let p = preview {
+                        p.previewControllerDelegate = self
+                        p.modalPresentationStyle = .fullScreen
+                        self.bridge?.viewController?.present(p, animated: true)
+                        VoxAudioPlugin.nlog("recStop → preview")
+                        call.resolve(["ok": true])
+                    } else {
+                        VoxAudioPlugin.nlog("recStop error: \(err?.localizedDescription ?? "no preview")")
+                        call.resolve(["ok": false, "error": err?.localizedDescription ?? "no preview"])
+                    }
+                }
+            }
+        }
+    }
+
+    public func previewControllerDidFinish(_ previewController: RPPreviewViewController) {
+        previewController.dismiss(animated: true)
+    }
+
     @objc func routeChanged(_ n: Notification) {
+        let reason = (n.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
+        VoxAudioPlugin.nlog("routeChange reason=\(reason) " + VoxAudioPlugin.sessionDesc())
         DispatchQueue.main.async {
             if !VoxAudioPlugin.headphones() { VoxAudioPlugin.keepOnSpeaker() }
             self.notifyListeners("route", data: ["headphones": VoxAudioPlugin.headphones()])
         }
+    }
+
+    @objc func interrupted(_ n: Notification) {
+        let type = (n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) ?? 99
+        let opt = (n.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
+        VoxAudioPlugin.nlog("interruption type=\(type == 1 ? "began" : type == 0 ? "ended" : String(type)) opt=\(opt)")
+    }
+
+    @objc func servicesReset(_ n: Notification) {
+        VoxAudioPlugin.nlog("mediaServicesWereReset")
     }
 }
 

@@ -117,6 +117,7 @@ function openSettings() {
     ${row('noiseSup', 'ノイズ抑制', '周りの雑音を減らします。声の特徴も少し丸くなります。')}
     ${row('ticks', '操作音', 'メモリの回転・装着時の小さな効果音。')}
     ${row('reduceMotion', '動きを減らす', 'アニメーションを控えめにします。')}
+    ${debugSectionHTML()}
     <div class="h2">データ</div>
     <div class="note">保存先: <b>${S.persistent ? 'この端末のブラウザ内 (IndexedDB)' : '一時メモリ（このページを閉じると消えます）'}</b><br>写真・録音はクラウドに送信されません。</div>
     <div class="footer-actions"><button class="btn danger" id="btnReset">${ICON.trash} すべてのデータを消去</button></div>
@@ -124,6 +125,7 @@ function openSettings() {
     <div class="note">VOXM v2.0 Web版。声の変換は端末内で動く信号処理（ピッチ・声色・エフェクト）です。<b>AIによる本人そっくりの声質変換は未搭載</b>で、友達の声メモリは「声の高さと声色の傾向」を近づける簡易プロファイルです。</div>
   `, (b, close) => {
     if ($('#nativeStat', b)) VoxNative.call('route').then((r) => { const e = $('#nativeStat', b); if (e) e.textContent = r && typeof r.headphones === 'boolean' ? (r.headphones ? 'イヤホン接続中（ハウリング防止OFF）' : 'スピーカー（ハウリング防止ON）') : '自動判定できません（手動の設定を使います）'; });
+    bindDebugSection(b);
     $$('[data-sw]', b).forEach((sw) => sw.addEventListener('click', () => {
       const k = sw.dataset.sw; S[k] = !S[k]; sw.classList.toggle('on', S[k]); saveSettings();
       if (k === 'reduceMotion') document.documentElement.classList.toggle('reduce-motion', S.reduceMotion);

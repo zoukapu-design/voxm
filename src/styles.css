@@ -677,3 +677,10 @@ input, select, textarea { font-size: max(16px, 1em); }
   text-shadow: 0 1px 0 #fff, 0 -1px 0 rgba(120,100,180,.35); }
 .dk-mark span { font-family: var(--tech); font-size: 7px; letter-spacing: .4em; padding-left: .4em; color: #a49bc9; }
 .deck.loaded .dk-mark { opacity: 0; }
+
+/* debug HUD */
+.dbg-hud { position: fixed; left: 6px; right: 6px; top: calc(env(safe-area-inset-top) + 58px); z-index: 60; padding: 7px 8px 6px; border-radius: 10px;
+  background: rgba(0,0,0,.78); border: 1px solid rgba(120,255,170,.35); color: #8dffb5; font: 10px/1.35 ui-monospace, Menlo, monospace; pointer-events: none; }
+.dbg-hud .dh-txt { white-space: pre-wrap; word-break: break-all; }
+.dbg-hud .dh-row { display: flex; gap: 6px; margin-top: 6px; pointer-events: auto; }
+.dbg-hud button { flex: 1; height: 26px; border-radius: 7px; border: 1px solid rgba(120,255,170,.35); background: rgba(120,255,170,.08); color: #b9ffd2; font: 600 11px/1 system-ui; }

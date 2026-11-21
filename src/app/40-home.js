@@ -569,7 +569,8 @@ async function toggleConvert() {
   if (st.state === 'live') {
     VoxEngine.sfx('on');
     watchRoute(true);
-    if (!headphoneTipShown && S.monitor) { headphoneTipShown = true; toast(VoxEngine.status.opts.safeMode ? '話してみてください。スピーカーだと声が少しずつ小さくなることがあります（イヤホン推奨）' : '話してみてください', 3400); }
+    if (!S.monitor) toast('モニターがOFFなので声は出ません。下の「MON」でONにできます', 4000);
+    else if (!headphoneTipShown) { headphoneTipShown = true; toast(VoxEngine.status.opts.safeMode ? '話してみてください。スピーカーだと声が少しずつ小さくなることがあります（イヤホン推奨）' : '話してみてください', 3400); }
   } else if (st.state === 'error') showMicHelp();
   updateDriver();
 }

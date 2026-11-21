@@ -15,7 +15,8 @@ async function boot() {
   }
   // block pinch / double-tap zoom (iOS ignores user-scalable in some cases)
   document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
-  window.VOXM_DEBUG = { S, W, VoxEngine, go, insertCurrent, ejectChip, combinedParams, applyParams, CALL, startCall };
+  window.VOXM_DEBUG = { logText, VLOG, S, W, VoxEngine, go, insertCurrent, ejectChip, combinedParams, applyParams, CALL, startCall };
+  dbgStart(); if (S.debugHud) setHud(true);
   callInit(); // VOXM calls (no-op until Firebase is configured)
 }
 boot();

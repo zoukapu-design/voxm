@@ -25,6 +25,8 @@ SB=ios/App/App/Base.lproj/Main.storyboard
 if ! grep -q VoxAudioPlugin "$APPDEL"; then
   grep -q "^import AVFoundation" "$APPDEL" || sed -i '' 's/^import Capacitor$/import Capacitor\
 import AVFoundation/' "$APPDEL"
+  grep -q "^import ReplayKit" "$APPDEL" || sed -i '' 's/^import AVFoundation$/import AVFoundation\
+import ReplayKit/' "$APPDEL"
   cat ci/native/VoxAudio.swift >> "$APPDEL"
 fi
 sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="VoxBridgeViewController" customModule="App" customModuleProvider="target"/' "$SB"
