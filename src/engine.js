@@ -175,17 +175,25 @@ registerProcessor('voxm-core', VoxmProcessor);`;
     st.lastMsg = performance.now();
   }
 
+  // create / resume the AudioContext synchronously inside the tap (iOS only allows it during a user gesture)
+  function prime() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!st.ctx || st.ctx.state === 'closed') {
+      st.ctx = new AC({ latencyHint: 'interactive' });
+      st.ctx.addEventListener('statechange', () => { if (st.state === 'live' && st.ctx.state !== 'running') resumeCtx(); });
+    }
+    if (st.ctx.state !== 'running') st.ctx.resume().catch(() => {});
+  }
+
   async function start(opts = {}) {
     if (st.state === 'live' || st.state === 'starting') return;
     if (!supported()) { st.state = 'error'; st.error = 'このブラウザはマイク処理に未対応です'; emit(); return; }
-    st.state = 'starting'; st.error = ''; st.opts = opts; emit();
+    st.state = 'starting'; st.error = ''; st.opts = opts; st.startedAt = Date.now(); emit();
     try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!st.ctx || st.ctx.state === 'closed') {
-        st.ctx = new AC({ latencyHint: 'interactive' });
-        st.ctx.addEventListener('statechange', () => { if (st.state === 'live' && st.ctx.state !== 'running') resumeCtx(); });
-      }
-      if (st.ctx.state !== 'running') await st.ctx.resume();
+      prime();
+      // never wait forever: iOS can leave resume() pending without a fresh tap (the watchdog asks for one)
+      if (st.ctx.state !== 'running') await Promise.race([st.ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
       await buildGraph();
       st.state = 'live'; st.needsResume = false; emit();
       startWatchdog();
@@ -415,7 +423,7 @@ registerProcessor('voxm-core', VoxmProcessor);`;
   }
 
   return {
-    status: st, DEFAULT, supported, start, stop, reconfigure, setParams, setMonitor, setVolume, latencyMs,
+    status: st, DEFAULT, supported, prime, start, stop, reconfigure, setParams, setMonitor, setVolume, latencyMs,
     canPickOutput, listOutputs, setOutput, startRecording, stopRecording, recording,
     renderOffline, encodeWav, sfx, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
   };

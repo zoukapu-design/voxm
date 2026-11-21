@@ -556,7 +556,11 @@ async function toggleConvert() {
     if (VoxEngine.recording()) await toggleRec();
     VoxEngine.stop(); watchRoute(false); VoxEngine.sfx('off'); updateDriver(); return;
   }
-  if (st.state === 'starting') return;
+  VoxEngine.prime(); // unlock audio right inside the tap, before anything async
+  if (st.state === 'starting') {
+    if (Date.now() - (st.startedAt || 0) < 6000) return;
+    VoxEngine.stop(); // stuck: let this tap start over
+  }
   if (!seatedChips().length && W.list.length) await insertCurrent();
   VoxEngine.setParams(combinedParams());
   VoxEngine.status.monitor = S.monitor; VoxEngine.status.volume = S.volume;

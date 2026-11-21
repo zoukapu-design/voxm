@@ -4,15 +4,18 @@
    null and the app falls back to the user's own earphone/speaker choice. */
 const VoxNative = {
   isNative() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } },
+  // native calls never block the app: give up after 1.5 s (e.g. plugin missing in an older build)
   async call(method, args = {}) {
     if (!this.isNative()) return null;
     const C = window.Capacitor;
-    try {
+    const run = async () => {
       const P = C.Plugins && C.Plugins.VoxAudio;
-      if (P && typeof P[method] === 'function') return await P[method](args);
-      if (typeof C.nativePromise === 'function') return await C.nativePromise('VoxAudio', method, args);
-    } catch (e) { console.warn('VoxAudio.' + method, e); }
-    return null;
+      if (P && typeof P[method] === 'function') return P[method](args);
+      if (typeof C.nativePromise === 'function') return C.nativePromise('VoxAudio', method, args);
+      return null;
+    };
+    try { return await Promise.race([run(), new Promise((r) => setTimeout(() => r(null), 1500))]); }
+    catch (e) { console.warn('VoxAudio.' + method, e); return null; }
   },
 };
 const ROUTE = { headphones: null, timer: 0 };
@@ -22,6 +25,7 @@ const ROUTE = { headphones: null, timer: 0 };
      treats the converted voice as "echo" and slowly turns your own voice down.
    - earphones: OFF — no fading, lower latency, better sound. */
 async function audioOpts() {
+  VoxEngine.prime(); // still inside the tap
   let safe = S.safeMode;
   const r = await VoxNative.call('prepare');
   if (r && typeof r.headphones === 'boolean') { ROUTE.headphones = r.headphones; safe = !r.headphones; }

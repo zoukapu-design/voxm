@@ -666,3 +666,7 @@ input, select, textarea { font-size: max(16px, 1em); }
   background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 60%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 14px var(--c); text-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .vic .mono, .vcic .mono, .vmini .mono, .md-art .mono { width: 100%; height: 100%; display: grid; place-items: center; font-weight: 800; color: #fff; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 65%); }
 .md-art .mono { width: 40px; height: 40px; border-radius: 50%; font-size: 18px; box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 12px var(--c); }
+
+/* the 3D deck is decoration only (taps go to the .hit overlays), so it must never swallow taps meant for the dock */
+.deck-scene, .deck-scene *, .deck-floor { pointer-events: none !important; }
+.ctrl { z-index: 40; }
