@@ -573,3 +573,45 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .vrank { width: 18px; font-family: var(--tech); font-size: 12px; color: #8d84bf; }
 .vpnm { font-size: 13px; font-weight: 700; } .vpnm i { font-style: normal; color: #8d84bf; margin: 0 2px; }
 .vps { font-size: 16px; font-weight: 800; }
+
+/* ---------- VOXM call ---------- */
+.callbox { margin: 14px 0 6px; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, rgba(164,135,255,.14), rgba(20,16,40,.6)); box-shadow: inset 0 0 0 1px rgba(190,170,255,.35), 0 0 30px rgba(164,135,255,.15); }
+.callbox .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--sc) 22%, transparent); color: var(--sc); flex: none; }
+.callbox .ic svg { width: 20px; height: 20px; }
+.cme { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin-top: 12px; align-items: end; }
+.cme input, .cadd input { width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(190,170,255,.3); background: rgba(8,7,18,.6); color: #fff; font-size: 15px; }
+.ccode { margin-top: 4px; padding: 9px 14px; border-radius: 12px; border: 1px dashed rgba(255,255,255,.5); background: rgba(255,255,255,.06); color: #fff; font-family: var(--tech); font-size: 15px; letter-spacing: .18em; }
+.cadd { display: flex; gap: 8px; margin-top: 12px; } .cadd input { margin: 0; text-transform: uppercase; letter-spacing: .12em; } .cadd .btn { flex: none; }
+.cfr { margin-top: 10px; display: grid; gap: 6px; }
+.cfr-i { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 14px; background: rgba(255,255,255,.04); }
+.cfr-i .btn.call { flex: none; padding: 8px 14px; background: linear-gradient(180deg, #3ee08a, #19b866); color: #04140a; }
+.cav { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 17px; font-weight: 800; color: #fff; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 60%, color-mix(in srgb, var(--c) 40%, #000)); box-shadow: 0 0 0 2px rgba(255,255,255,.2), 0 0 14px color-mix(in srgb, var(--c) 60%, transparent); }
+.call-ov { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 12px) 20px calc(env(safe-area-inset-bottom) + 24px); color: #fff; }
+.call-ov.min { inset: auto 0 auto 0; top: calc(env(safe-area-inset-top) + 6px); padding: 0; align-items: center; pointer-events: none; }
+.call-bg { position: absolute; inset: 0; z-index: -1; background: radial-gradient(80% 50% at 50% 30%, rgba(120,90,255,.45), transparent 70%), linear-gradient(180deg, #0c0a1c, #05040b); }
+.call-top { display: flex; align-items: center; justify-content: space-between; }
+.call-peer { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 26px 0 18px; }
+.call-peer .cav { width: 104px; height: 104px; font-size: 42px; animation: cavPulse 2.2s ease-in-out infinite; }
+.call-peer b { font-size: 24px; } .call-st { font-family: var(--tech); font-size: 13px; letter-spacing: .2em; color: #b9b3dc; }
+@keyframes cavPulse { 50% { box-shadow: 0 0 0 10px rgba(164,135,255,.08), 0 0 40px rgba(164,135,255,.5); } }
+.call-chips { margin-top: 14px; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.cc-h { display: flex; justify-content: space-between; font-size: 12px; color: #a39cc9; margin-bottom: 8px; font-weight: 700; }
+.cc-h .link { border: 0; background: none; color: #c9b8ff; font-weight: 700; font-size: 12px; }
+.cc-row { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; align-items: center; }
+.cchip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: color-mix(in srgb, var(--c) 18%, #0c0b16); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent); font-size: 12px; }
+.cchip > img, .cchip > .art { width: 26px; height: 26px; flex: none; border-radius: 50%; object-fit: cover; overflow: hidden; background: #0a0816; display: grid; place-items: center; }
+.cchip b { white-space: nowrap; }
+.cchip .art svg { width: 100%; height: 100%; display: block; } .cchip .art svg > rect, .cchip .art svg > g[opacity] { display: none; }
+.call-btns { margin-top: auto; display: flex; justify-content: center; gap: 36px; padding-top: 20px; }
+.cbig { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 0; background: none; color: #fff; font-size: 12px; font-weight: 700; }
+.cbig svg { width: 68px; height: 68px; padding: 20px; border-radius: 50%; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.cbig.on svg { background: #fff; color: #111; }
+.cbig.no svg { background: linear-gradient(180deg, #ff5b6e, #e0283f); box-shadow: 0 8px 24px rgba(224,40,63,.5); }
+.cbig.yes svg { background: linear-gradient(180deg, #3ee08a, #19b866); box-shadow: 0 8px 24px rgba(25,184,102,.5); animation: cavPulse 1.2s ease-in-out infinite; }
+.call-pill { pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; border: 0; background: linear-gradient(180deg, #3ee08a, #19b866); color: #04140a; font-weight: 800; font-size: 13px; box-shadow: 0 6px 20px rgba(25,184,102,.45); }
+.call-pill i { width: 8px; height: 8px; border-radius: 50%; background: #04140a; animation: armed 1s ease-in-out infinite; }
+.swap-fx { position: fixed; left: 50%; top: 32%; z-index: 950; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px; pointer-events: none; animation: swapIn 2.6s cubic-bezier(.2,.8,.2,1) forwards; }
+.sfx-card { width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; overflow: hidden; background: #0a0816; box-shadow: 0 0 0 2px var(--c), 0 0 40px var(--c); }
+.sfx-card img { width: 100%; height: 100%; object-fit: cover; } .sfx-card .art { width: 86%; height: 86%; } .sfx-card .art svg { width: 100%; height: 100%; }
+.sfx-t { padding: 8px 14px; border-radius: 999px; background: rgba(8,7,18,.85); font-size: 13px; color: #fff; white-space: nowrap; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+@keyframes swapIn { 0% { opacity: 0; transform: translate(-50%, -60px) scale(.6) rotate(-8deg); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.08) rotate(0); } 25% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 30px) scale(.9); } }

@@ -8,13 +8,11 @@ const SERVICES = [
   { id: 'camera', icon: 'camera', color: '#ff4d68', name: 'カメラで撮る（変換ボイス動画）', status: 'ok',
     text: '自撮り動画に変換した声をのせて録画。そのまま共有できます。' },
   { id: 'file', icon: 'file', color: '#7fdcff', name: '音声ファイルを変換', status: 'ok',
-    text: 'ボイスメモなどの録音ファイルを、装着中のメモリ＋FXで変換して保存。' },
+    text: 'ボイスメモなどの録音ファイルを、差し込んだメモリで変換して保存。' },
   { id: 'pc', icon: 'monitor', color: '#5865f2', name: 'PC通話・配信（Discord / Zoom / Teams / OBS / LINE PC版）', status: 'pc',
     text: 'Windows/MacのChrome・EdgeでVOXMを開き、出力先を仮想オーディオケーブルに。通話・配信アプリのマイクにそのケーブルを選ぶと、変換した声が相手に届きます。' },
   { id: 'line', icon: 'phone', color: '#06c755', name: 'LINE通話（iPhoneアプリ）にリアルタイムで', status: 'no',
     text: 'iPhoneは他のアプリのマイク入力を置き換えることをOSが許可していません。代わりに「録音して送る」か、PC版LINE＋仮想ケーブルを使ってください。' },
-  { id: 'call', icon: 'users', color: '#a487ff', name: 'VOXM通話（変換した声のまま通話）', status: 'plan',
-    text: 'VOXMユーザー同士で、メモリを差し替えながら通話できる機能を開発予定（WebRTC・通話SDKを検討中）。' },
   { id: 'live', icon: 'broadcast', color: '#ff7a3d', name: 'ライブ配信（YouTube / Twitch）', status: 'pc',
     text: 'PCのOBSで仮想ケーブルをマイクに設定すれば配信できます。iPhone単体からの直接配信は開発予定。' },
 ];
@@ -27,6 +25,7 @@ RENDER.output = () => {
     <div class="eyebrow">OUTPUT HUB</div>
     <h1 class="h1">どこで使う？</h1>
     <p class="lead">変換した声の届け先。<b style="color:#fff">できること・できないこと</b>をそのまま表示しています。</p>
+    ${callSectionHTML()}
     ${SERVICES.map((s) => `<div class="svc ${s.status === 'ok' ? 'go' : ''}" data-svc="${s.id}">
       <span class="ic" style="--sc:${s.color}">${ICON[s.icon]}</span>
       <div class="grow"><div class="t"><b>${s.name}</b></div><p>${s.text}</p>
@@ -45,6 +44,7 @@ RENDER.output = () => {
       <span>保存</span><b>${S.persistent ? 'この端末内' : '一時メモリ'}</b>
     </div><div class="small muted" style="margin-top:10px;line-height:1.6">遅延は信号処理（約35ms）＋端末のオーディオ遅延の推定値です。Bluetoothイヤホンは大きく遅れるため、有線イヤホンがおすすめです。</div></div>`;
   bindOutput(page);
+  bindCallSection(page);
 };
 function svcAction(id) {
   if (id === 'monitor') return `<button class="pill ${S.monitor ? 'on' : ''}" data-act="mon">${S.monitor ? 'モニターON' : 'モニターOFF'}</button>`;

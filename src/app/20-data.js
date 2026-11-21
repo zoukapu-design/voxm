@@ -140,7 +140,7 @@ async function loadAll() {
   }
   S.seenBuiltins = BUILTIN_CHIPS.map((c) => c.id);
   if (!kv || !kv.seenBuiltins || !kv.seenCases) saveSettings();
-  if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) if (k in kv) S[k] = kv[k];
+  if (kv) for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline', 'call']) if (k in kv) S[k] = kv[k];
   if (kv && !kv.slots && kv.insertedId) S.slots = [null, kv.insertedId, null]; // single-slot era
   if (!chipById(S.selectedId)) S.selectedId = S.chips[0]?.id || null;
   S.slots = [0, 1, 2, 3].map((i) => (Array.isArray(S.slots) && chipById(S.slots[i]) ? S.slots[i] : null));
@@ -153,7 +153,7 @@ function saveSettings() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     const kv = {};
-    for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline']) kv[k] = S[k];
+    for (const k of ['selectedId', 'slots', 'homeCase', 'fx', 'fineTune', 'monitor', 'volume', 'safeMode', 'routeAsked', 'boost', 'noiseSup', 'reduceMotion', 'ticks', 'baseline', 'call']) kv[k] = S[k];
     kv.removedBuiltins = S.removedBuiltins || [];
     kv.seenBuiltins = S.seenBuiltins || BUILTIN_CHIPS.map((c) => c.id);
     kv.seenCases = S.seenCases || BUILTIN_CASES.map((c) => c.id);
@@ -206,7 +206,7 @@ function combinedParams() {
   p.boost = S.boost ? 1 : 0;
   return p;
 }
-function applyParams() { VoxEngine.setParams(combinedParams()); }
+function applyParams() { VoxEngine.setParams(combinedParams()); if (typeof callChipsChanged === 'function') callChipsChanged(); }
 
 function profileLine(p) {
   p = p || {};
