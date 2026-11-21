@@ -5,6 +5,9 @@ name: AI voice conversion eval (MeanVC2)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   eval:
     runs-on: macos-26
@@ -109,6 +112,15 @@ jobs:
           PY
           ls -la ../eval
           echo "Voices: $VOICES"
+
+      - name: Publish results to the vc-eval-results branch (test voices only)
+        if: always()
+        run: |
+          mkdir -p /tmp/res && cp eval/*.wav /tmp/res/ 2>/dev/null || true
+          cd /tmp/res && git init -q && git checkout -q -b vc-eval-results
+          git config user.name "vc-eval" && git config user.email "vc-eval@users.noreply.github.com"
+          git add -A && git commit -qm "vc-eval results ${{ github.run_number }}" || exit 0
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" vc-eval-results
 
       - uses: actions/upload-artifact@v4
         if: always()
